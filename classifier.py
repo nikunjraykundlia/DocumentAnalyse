@@ -36,7 +36,7 @@ class DocumentClassifier:
         
         if self.use_ai and OPENAI_AVAILABLE:
             api_key = os.environ.get("OPENAI_API_KEY")
-            if api_key:
+            if api_key and OpenAI:
                 self.openai_client = OpenAI(api_key=api_key)
                 logging.info("OpenAI integration enabled")
             else:

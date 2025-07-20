@@ -16,6 +16,14 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+# Add CORS headers manually
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
 # Initialize the document classifier
 classifier = DocumentClassifier()
 
