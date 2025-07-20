@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a Flask-based web application that performs OCR (Optical Character Recognition) on uploaded document images and classifies them into predefined categories. The system uses rule-based classification with optional AI enhancement through OpenAI's API. It supports various document types including electricity bills, property tax bills, and birth certificates.
+This is a Flask-based web application that performs OCR (Optical Character Recognition) on uploaded document images and PDF files, then classifies them into predefined categories. The system uses rule-based classification with optional AI enhancement through OpenAI's API. It supports various document types including electricity bills, property tax bills, birth certificates, mobile phone bills, water bills, and gas bills.
 
 ## User Preferences
 
@@ -26,10 +26,11 @@ Preferred communication style: Simple, everyday language.
 ## Key Components
 
 ### Document Processing Pipeline
-1. **File Upload Handler** (`/upload` route): Validates file types and processes uploads
-2. **OCR Engine**: Extracts text from images using Tesseract
-3. **Document Classifier**: Categorizes documents based on extracted text
-4. **Validation Engine**: Validates required fields for each document type
+1. **File Upload Handler** (`/upload` route): Validates file types (images and PDFs) and processes uploads
+2. **PDF Converter**: Converts PDF pages to images using pdf2image library
+3. **OCR Engine**: Extracts text from images and PDF pages using Tesseract
+4. **Document Classifier**: Categorizes documents based on extracted text using rule-based and AI methods
+5. **Validation Engine**: Validates required fields for each document type
 
 ### Document Classification System
 - **Rule-based Classification**: Uses keyword matching and pattern recognition
@@ -57,6 +58,8 @@ Preferred communication style: Simple, everyday language.
 ### Required Services
 - **Tesseract OCR**: System-level OCR engine for text extraction
 - **PIL/Pillow**: Image processing library
+- **Poppler**: PDF rendering library (system dependency)
+- **pdf2image**: Python library for converting PDF pages to images
 
 ### Optional Services
 - **OpenAI API**: For AI-enhanced document classification
@@ -68,6 +71,7 @@ Preferred communication style: Simple, everyday language.
 - Flask: Web framework
 - pytesseract: Tesseract Python wrapper
 - PIL: Image processing
+- pdf2image: PDF to image conversion
 - scikit-learn: Machine learning capabilities (for training custom models)
 - OpenAI: AI integration (optional)
 

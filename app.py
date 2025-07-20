@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, render_template, flash, redirect, url
 import pytesseract
 from PIL import Image
 import io
+from pdf2image import convert_from_bytes
 from classifier import DocumentClassifier
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -49,14 +50,40 @@ def upload_document():
                 'error': f'Unsupported file type. Allowed: {", ".join(allowed_extensions)}'
             }), 400
         
-        # Process the image with OCR
+        # Process the file with OCR
         try:
             if file_extension == 'pdf':
-                # For PDF files, you might want to use pdf2image library
-                # For now, we'll return an error message
-                return jsonify({
-                    'error': 'PDF processing not implemented. Please upload an image file.'
-                }), 400
+                # Process PDF file
+                file_data = file.read()
+                logging.info("Processing PDF file...")
+                
+                # Convert PDF pages to images
+                try:
+                    images = convert_from_bytes(file_data, dpi=300, first_page=1, last_page=5)  # Limit to first 5 pages
+                    if not images:
+                        return jsonify({
+                            'error': 'No pages could be extracted from the PDF file.'
+                        }), 400
+                    
+                    # Extract text from all pages
+                    extracted_text = ""
+                    for i, image in enumerate(images):
+                        logging.info(f"Processing PDF page {i+1}")
+                        page_text = pytesseract.image_to_string(image, config='--psm 6')
+                        if page_text.strip():
+                            extracted_text += f"Page {i+1}:\n{page_text}\n\n"
+                    
+                    if not extracted_text.strip():
+                        return jsonify({
+                            'error': 'No text could be extracted from the PDF pages. Please ensure the PDF contains readable text.'
+                        }), 400
+                        
+                except Exception as pdf_error:
+                    logging.error(f"PDF processing error: {str(pdf_error)}")
+                    return jsonify({
+                        'error': f'Error processing PDF: {str(pdf_error)}. Please ensure the PDF is not corrupted and contains text.'
+                    }), 400
+                    
             else:
                 # Process image file
                 image = Image.open(io.BytesIO(file.read()))
