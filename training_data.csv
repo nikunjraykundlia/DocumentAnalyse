@@ -1,0 +1,22 @@
+text,label
+"ELECTRIC BILL Account Number: 123456789 Service Address: 123 Main St Billing Period: Jan 1 - Jan 31 kWh Used: 450 Amount Due: $85.50 Due Date: Feb 15",Electricity Bill
+"ELECTRICITY INVOICE Meter Reading: Previous 12345 Current 12795 kWh Usage: 450 Total Amount: $92.30 Payment Due: March 1st",Electricity Bill
+"POWER COMPANY BILL Energy Usage This Month: 380 kilowatt hours Previous Balance: $0.00 Current Charges: $76.84 Due Date: 02/20/2024",Electricity Bill
+"PROPERTY TAX NOTICE Property Address: 456 Oak Avenue Assessment Year: 2024 Assessed Value: $250,000 Tax Amount: $3,200.00 Due Date: April 30",Property Tax Bill
+"REAL ESTATE TAX BILL Parcel Number: 1234-567-890 Property Location: 789 Pine Street Annual Tax: $2,875.50 Payment Due: June 15th",Property Tax Bill
+"MUNICIPAL TAX ASSESSMENT Property Type: Residential Tax Year: 2024 Total Assessment: $185,000 Amount Owed: $1,950.00",Property Tax Bill
+"CERTIFICATE OF BIRTH Full Name: John Michael Smith Date of Birth: March 15, 1995 Place of Birth: City Hospital, Springfield Mother: Mary Smith Father: Robert Smith",Birth Certificate
+"BIRTH CERTIFICATE State of California Child's Name: Sarah Elizabeth Johnson Born on: July 22, 1988 City of Birth: Los Angeles County Registration Number: 98765",Birth Certificate
+"OFFICIAL BIRTH RECORD Name at Birth: Michael David Brown Date of Birth: December 3, 1992 Place of Birth: Memorial Hospital File Number: BC-445566",Birth Certificate
+"WIRELESS BILL Account: 555-123-4567 Billing Cycle: Jan 1 - Jan 31 Monthly Service: $65.00 Data Usage: 8.5 GB Call Minutes: 420 Total Due: $78.45",Mobile Phone Bill
+"CELL PHONE STATEMENT Phone Number: (555) 987-6543 Service Period: February 2024 Voice Charges: $35.00 Data Charges: $40.00 Text Messages: 2,500 Amount Due: $82.15",Mobile Phone Bill
+"MOBILE SERVICE BILL Primary Line: 555-246-8100 Plan: Unlimited Talk & Text Monthly Charges: $55.00 Equipment: $15.00 Total: $70.00 Due: Mar 5",Mobile Phone Bill
+"WATER BILL Account Number: WTR-789123 Service Address: 321 Elm Street Billing Period: Q1 2024 Usage: 15,000 gallons Previous Balance: $0.00 Current Charges: $145.60",Water Bill
+"WATER SERVICE STATEMENT Meter Reading: 125,678 gallons Service Period: Jan-Mar 2024 Water Usage Charge: $89.45 Service Fee: $12.50 Total Amount: $101.95",Water Bill
+"MUNICIPAL WATER BILL Customer ID: 456789 Address: 654 Maple Ave Water Consumed: 12,500 gal Sewer Charges: $45.00 Water Charges: $67.80 Due Date: April 10",Water Bill
+"GAS BILL Account: GAS-321654 Service Location: 987 Cedar Lane Billing Period: Winter 2024 Therms Used: 85 Gas Charges: $156.40 Delivery Charges: $23.60 Total: $180.00",Gas Bill
+"NATURAL GAS STATEMENT Customer Number: 789456123 Service Address: 147 Birch Road Usage Period: Dec-Feb Current Reading: 1,250 therms Amount Due: $198.75 Due: March 20",Gas Bill
+"GAS COMPANY BILL Meter Number: GM-987654 Previous Reading: 1,100 Current Reading: 1,185 Gas Usage: 85 therms Monthly Charge: $145.30 Payment Due: Feb 28",Gas Bill
+"INVOICE #12345 XYZ Corporation 123 Business Blvd Services Rendered: Consulting Amount: $2,500.00 Terms: Net 30 Due Date: March 15",Unknown
+"MEDICAL BILL Patient: Jane Doe Date of Service: Feb 1, 2024 Procedure: Annual Checkup Insurance Payment: $150.00 Patient Responsibility: $25.00",Unknown
+"CREDIT CARD STATEMENT Account Number: **** **** **** 1234 Statement Date: Feb 29, 2024 Previous Balance: $1,250.00 New Charges: $345.67 Minimum Payment: $35.00",Unknown

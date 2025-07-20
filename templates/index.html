@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Classification System</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .upload-area {
+            border: 2px dashed var(--bs-border-color);
+            border-radius: 0.5rem;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--bs-primary);
+            background-color: var(--bs-primary-bg-subtle);
+        }
+        
+        .file-info {
+            display: none;
+            margin-top: 1rem;
+        }
+        
+        .result-card {
+            display: none;
+            margin-top: 2rem;
+        }
+        
+        .confidence-bar {
+            height: 0.5rem;
+            border-radius: 0.25rem;
+            overflow: hidden;
+        }
+        
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+        
+        .text-preview {
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <!-- Header -->
+        <div class="row">
+            <div class="col-12">
+                <div class="text-center mb-5">
+                    <h1 class="display-4 mb-3">
+                        <i class="fas fa-file-alt text-primary me-3"></i>
+                        Document Classification System
+                    </h1>
+                    <p class="lead text-muted">
+                        Upload images of documents for automatic text extraction, classification, and validation
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body">
+                        <form id="upload-form" enctype="multipart/form-data">
+                            <div class="upload-area" id="upload-area">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                <h5>Drag & Drop or Click to Upload</h5>
+                                <p class="text-muted mb-3">
+                                    Supported formats: PNG, JPG, JPEG, GIF, BMP, TIFF
+                                </p>
+                                <input type="file" name="file" id="file-input" accept="image/*" style="display: none;">
+                                <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('file-input').click()">
+                                    <i class="fas fa-folder-open me-2"></i>Choose File
+                                </button>
+                            </div>
+                            
+                            <div class="file-info" id="file-info">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-file me-2"></i>
+                                    <span id="file-name"></span>
+                                    <span class="badge bg-secondary ms-2" id="file-size"></span>
+                                </div>
+                                <button type="submit" class="btn btn-primary" id="classify-btn">
+                                    <span class="btn-text">
+                                        <i class="fas fa-robot me-2"></i>Classify Document
+                                    </span>
+                                    <span class="btn-loading" style="display: none;">
+                                        <span class="spinner-border spinner-border-sm me-2"></span>Processing...
+                                    </span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="result-card" id="result-card">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i>Classification Results
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Classification Result -->
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <h6>Document Type</h6>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge fs-6 me-3" id="classification-badge">Unknown</span>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between small text-muted mb-1">
+                                                <span>Confidence</span>
+                                                <span id="confidence-text">0%</span>
+                                            </div>
+                                            <div class="confidence-bar bg-secondary">
+                                                <div class="bg-primary h-100" id="confidence-bar" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Validation Status</h6>
+                                    <div id="validation-status">
+                                        <span class="badge bg-secondary">Not validated</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Validation Errors -->
+                            <div id="validation-errors" style="display: none;">
+                                <h6 class="text-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Validation Issues
+                                </h6>
+                                <ul class="list-group list-group-flush mb-4" id="error-list">
+                                </ul>
+                            </div>
+
+                            <!-- Extracted Text -->
+                            <div>
+                                <h6>Extracted Text</h6>
+                                <div class="card bg-dark">
+                                    <div class="card-body">
+                                        <div class="text-preview" id="extracted-text">
+                                            No text extracted yet...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Supported Document Types -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>Supported Document Types
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-bolt text-warning me-3"></i>
+                                    <div>
+                                        <strong>Electricity Bills</strong>
+                                        <br><small class="text-muted">Power, energy, kWh usage</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-home text-info me-3"></i>
+                                    <div>
+                                        <strong>Property Tax Bills</strong>
+                                        <br><small class="text-muted">Real estate, municipal tax</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-baby text-success me-3"></i>
+                                    <div>
+                                        <strong>Birth Certificates</strong>
+                                        <br><small class="text-muted">Official birth documents</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-mobile-alt text-primary me-3"></i>
+                                    <div>
+                                        <strong>Mobile Phone Bills</strong>
+                                        <br><small class="text-muted">Cellular, wireless bills</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-tint text-info me-3"></i>
+                                    <div>
+                                        <strong>Water Bills</strong>
+                                        <br><small class="text-muted">Water service, usage</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-fire text-danger me-3"></i>
+                                    <div>
+                                        <strong>Gas Bills</strong>
+                                        <br><small class="text-muted">Natural gas, heating</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // DOM elements
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const fileInfo = document.getElementById('file-info');
+        const fileName = document.getElementById('file-name');
+        const fileSize = document.getElementById('file-size');
+        const uploadForm = document.getElementById('upload-form');
+        const classifyBtn = document.getElementById('classify-btn');
+        const resultCard = document.getElementById('result-card');
+
+        // File handling
+        let selectedFile = null;
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.style.display = 'block';
+            resultCard.style.display = 'none';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Form submission
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!selectedFile) {
+                alert('Please select a file first.');
+                return;
+            }
+
+            // Show loading state
+            const btnText = classifyBtn.querySelector('.btn-text');
+            const btnLoading = classifyBtn.querySelector('.btn-loading');
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-block';
+            classifyBtn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    displayResults(result);
+                } else {
+                    displayError(result.error || 'An error occurred during processing.');
+                }
+            } catch (error) {
+                displayError('Network error: ' + error.message);
+            } finally {
+                // Reset button state
+                btnText.style.display = 'inline-block';
+                btnLoading.style.display = 'none';
+                classifyBtn.disabled = false;
+            }
+        });
+
+        function displayResults(result) {
+            // Update classification badge
+            const badge = document.getElementById('classification-badge');
+            badge.textContent = result.label;
+            badge.className = 'badge fs-6 me-3 ' + getBadgeClass(result.label);
+
+            // Update confidence
+            const confidence = Math.round((result.confidence || 0) * 100);
+            document.getElementById('confidence-text').textContent = confidence + '%';
+            document.getElementById('confidence-bar').style.width = confidence + '%';
+
+            // Update validation status
+            const validationStatus = document.getElementById('validation-status');
+            const validationErrors = document.getElementById('validation-errors');
+            const errorList = document.getElementById('error-list');
+
+            if (result.validation_errors && result.validation_errors.length > 0) {
+                validationStatus.innerHTML = '<span class="badge bg-warning">Issues Found</span>';
+                
+                // Show validation errors
+                errorList.innerHTML = '';
+                result.validation_errors.forEach(error => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.innerHTML = `<i class="fas fa-exclamation-circle text-warning me-2"></i>${error}`;
+                    errorList.appendChild(li);
+                });
+                validationErrors.style.display = 'block';
+            } else {
+                validationStatus.innerHTML = '<span class="badge bg-success">Valid</span>';
+                validationErrors.style.display = 'none';
+            }
+
+            // Update extracted text
+            document.getElementById('extracted-text').textContent = result.text || 'No text extracted';
+
+            // Show results
+            resultCard.style.display = 'block';
+            resultCard.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function displayError(errorMessage) {
+            const badge = document.getElementById('classification-badge');
+            badge.textContent = 'Error';
+            badge.className = 'badge fs-6 me-3 bg-danger';
+
+            document.getElementById('confidence-text').textContent = '0%';
+            document.getElementById('confidence-bar').style.width = '0%';
+
+            const validationStatus = document.getElementById('validation-status');
+            validationStatus.innerHTML = '<span class="badge bg-danger">Error</span>';
+
+            const validationErrors = document.getElementById('validation-errors');
+            const errorList = document.getElementById('error-list');
+            errorList.innerHTML = `<li class="list-group-item"><i class="fas fa-times-circle text-danger me-2"></i>${errorMessage}</li>`;
+            validationErrors.style.display = 'block';
+
+            document.getElementById('extracted-text').textContent = 'Error occurred during processing';
+
+            resultCard.style.display = 'block';
+            resultCard.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function getBadgeClass(label) {
+            const classes = {
+                'Electricity Bill': 'bg-warning',
+                'Property Tax Bill': 'bg-info',
+                'Birth Certificate': 'bg-success',
+                'Mobile Phone Bill': 'bg-primary',
+                'Water Bill': 'bg-info',
+                'Gas Bill': 'bg-danger',
+                'Unknown': 'bg-secondary'
+            };
+            return classes[label] || 'bg-secondary';
+        }
+    </script>
+</body>
+</html>
