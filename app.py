@@ -99,9 +99,9 @@ def upload_document():
                     extracted_text = ""
                     for i, image in enumerate(images):
                         logging.info(f"Processing PDF page {i+1}")
-                        page_text = pytesseract.image_to_string(image, config='--psm 6')
+                        page_text = pytesseract.image_to_string(image, config='--psm 6 --oem 3')
                         if page_text.strip():
-                            extracted_text += f"Page {i+1}:\n{page_text}\n\n"
+                            extracted_text += f"{page_text.strip()}\n"
                     
                     if not extracted_text.strip():
                         return jsonify({
@@ -123,7 +123,7 @@ def upload_document():
                     image = image.convert('RGB')
                 
                 # Extract text using OCR
-                extracted_text = pytesseract.image_to_string(image, config='--psm 6')
+                extracted_text = pytesseract.image_to_string(image, config='--psm 6 --oem 3')
                 
                 if not extracted_text.strip():
                     return jsonify({
