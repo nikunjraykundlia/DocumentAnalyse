@@ -20,3 +20,9 @@ text,label
 "INVOICE #12345 XYZ Corporation 123 Business Blvd Services Rendered: Consulting Amount: $2,500.00 Terms: Net 30 Due Date: March 15",Unknown
 "MEDICAL BILL Patient: Jane Doe Date of Service: Feb 1, 2024 Procedure: Annual Checkup Insurance Payment: $150.00 Patient Responsibility: $25.00",Unknown
 "CREDIT CARD STATEMENT Account Number: **** **** **** 1234 Statement Date: Feb 29, 2024 Previous Balance: $1,250.00 New Charges: $345.67 Minimum Payment: $35.00",Unknown
+"PAN CARD Permanent Account Number ABCDE1234F Name: JOHN DOE Father's Name: ROBERT DOE Date of Birth: 15/03/1985 Government of India Income Tax Department",PAN Card
+"INCOME TAX DEPARTMENT Government of India Permanent Account Number Card PAN: FGHIJ5678K Name: PRIYA SHARMA Father's Name: RAJESH SHARMA DOB: 22/07/1990",PAN Card
+"TAX IDENTIFICATION Number PAN Card KLMNO9012P Name: AMIT KUMAR Father's Name: SURESH KUMAR Date of Birth: 10/12/1988 Income Tax Department India",PAN Card
+"AADHAAR Unique Identification Authority of India Government of India Aadhaar Number: 1234 5678 9012 Name: RAVI SINGH Date of Birth: 05/08/1992 Address: 123 Main Street New Delhi",Aadhaar Card
+"UNIQUE IDENTIFICATION AUTHORITY OF INDIA Aadhaar Card UID: 9876 5432 1098 Name: SUNITA PATEL DOB: 18/11/1987 Address: 456 Park Avenue Mumbai Maharashtra",Aadhaar Card
+"GOVERNMENT OF INDIA Aadhaar Unique Identity Number: 5555 4444 3333 Name: VIKRAM GUPTA Date of Birth: 02/04/1995 Permanent Address: 789 Garden Road Bangalore Karnataka",Aadhaar Card

@@ -86,5 +86,27 @@ DOCUMENT_TYPES = {
             'amount_pattern': r'\$?\d+\.?\d*',
             'date_pattern': r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}'
         }
+    ),
+    
+    'pan_card': DocumentType(
+        name='PAN Card',
+        keywords=['pan card', 'permanent account number', 'income tax department', 'government of india', 'pan', 'taxpayer', 'assessee'],
+        required_fields=['pan number', 'name', 'father name', 'date of birth'],
+        optional_fields=['signature', 'photograph'],
+        validation_rules={
+            'pan_pattern': r'[A-Z]{5}[0-9]{4}[A-Z]{1}',
+            'date_pattern': r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}'
+        }
+    ),
+    
+    'aadhaar_card': DocumentType(
+        name='Aadhaar Card',
+        keywords=['aadhaar', 'aadhar', 'unique identification authority', 'uidai', 'government of india', 'aadhaar number', 'uid'],
+        required_fields=['aadhaar number', 'name', 'date of birth', 'address'],
+        optional_fields=['mobile number', 'email', 'photograph'],
+        validation_rules={
+            'aadhaar_pattern': r'\d{4}\s?\d{4}\s?\d{4}',
+            'date_pattern': r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}'
+        }
     )
 }

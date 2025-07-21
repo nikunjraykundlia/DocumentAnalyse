@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a Flask-based web application that performs OCR (Optical Character Recognition) on uploaded document images and PDF files, then classifies them into predefined categories. The system uses rule-based classification with optional AI enhancement through OpenAI's API. It supports various document types including electricity bills, property tax bills, birth certificates, mobile phone bills, water bills, and gas bills.
+This is a Flask-based web application that performs OCR (Optical Character Recognition) on uploaded document images and PDF files, then classifies them into predefined categories. The system uses rule-based classification with optional AI enhancement through OpenAI's API. It supports various document types including electricity bills, property tax bills, birth certificates, mobile phone bills, water bills, gas bills, and Indian identity documents (PAN Card, Aadhaar Card).
 
 ## User Preferences
 

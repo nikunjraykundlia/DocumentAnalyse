@@ -274,4 +274,20 @@ class DocumentClassifier:
             if 'birth' not in text_lower:
                 errors.append('Birth information not clearly indicated')
         
+        elif classification == 'PAN Card':
+            if 'government of india' not in text_lower and 'income tax' not in text_lower:
+                errors.append('Indian government authority not clearly indicated')
+            # Validate PAN number format if present
+            pan_pattern = r'[A-Z]{5}[0-9]{4}[A-Z]{1}'
+            if not re.search(pan_pattern, text.upper()):
+                errors.append('Valid PAN number format not found (should be like ABCDE1234F)')
+        
+        elif classification == 'Aadhaar Card':
+            if 'government of india' not in text_lower and 'uidai' not in text_lower:
+                errors.append('Indian government authority not clearly indicated')
+            # Validate Aadhaar number format if present
+            aadhaar_pattern = r'\d{4}\s?\d{4}\s?\d{4}'
+            if not re.search(aadhaar_pattern, text):
+                errors.append('Valid Aadhaar number format not found (should be 12 digits)')
+        
         return errors
