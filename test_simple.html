@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Test</title>
+</head>
+<body>
+    <h1>Simple Network Test</h1>
+    <button onclick="testConnection()">Test Connection</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testConnection() {
+            const result = document.getElementById('result');
+            try {
+                console.log('Testing connection to:', window.location.origin);
+                const response = await fetch('/health');
+                const data = await response.json();
+                result.innerHTML = `<p style="color: green;">Success: ${JSON.stringify(data)}</p>`;
+            } catch (error) {
+                result.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                console.error('Connection test failed:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -341,17 +341,23 @@
 
                 console.log('Sending request to /upload...', selectedFile.name, selectedFile.size);
                 
+                // Determine the base URL for API calls
+                const baseUrl = window.location.origin;
+                console.log('Base URL:', baseUrl);
+                
                 // Test health endpoint first
                 try {
-                    const healthResponse = await fetch('/health');
+                    const healthResponse = await fetch(`${baseUrl}/health`);
                     console.log('Health check:', healthResponse.status);
                 } catch (healthError) {
                     console.error('Health check failed:', healthError);
                 }
                 
-                const response = await fetch('/upload', {
+                const response = await fetch(`${baseUrl}/upload`, {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    mode: 'cors',
+                    credentials: 'same-origin'
                 });
 
                 console.log('Response received - Status:', response.status, 'Headers:', [...response.headers.entries()]);
