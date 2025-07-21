@@ -32,19 +32,34 @@ def index():
     """Serve the main document upload page."""
     return render_template('index.html')
 
-@app.route('/upload', methods=['POST'])
+@app.route('/health')
+def health():
+    """Health check endpoint."""
+    return jsonify({'status': 'healthy', 'message': 'API is working'})
+
+@app.route('/upload', methods=['POST', 'OPTIONS'])
 def upload_document():
     """
     Handle document upload, OCR processing, classification, and validation.
     """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     try:
+        # Debug logging
+        logging.info(f"Upload request received. Method: {request.method}")
+        logging.info(f"Files in request: {list(request.files.keys())}")
+        
         # Check if file was uploaded
         if 'file' not in request.files:
-            return jsonify({'error': 'No file uploaded'}), 400
+            return jsonify({'error': 'No file uploaded', 'success': False}), 400
         
         file = request.files['file']
+        logging.info(f"File uploaded: {file.filename}")
+        
         if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
+            return jsonify({'error': 'No file selected', 'success': False}), 400
         
         # Validate file type
         allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'pdf'}
@@ -55,7 +70,8 @@ def upload_document():
         
         if file_extension not in allowed_extensions:
             return jsonify({
-                'error': f'Unsupported file type. Allowed: {", ".join(allowed_extensions)}'
+                'error': f'Unsupported file type. Allowed: {", ".join(allowed_extensions)}',
+                'success': False
             }), 400
         
         # Process the file with OCR

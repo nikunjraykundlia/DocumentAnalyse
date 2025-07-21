@@ -339,40 +339,47 @@
                 const formData = new FormData();
                 formData.append('file', selectedFile);
 
-                console.log('Sending request to /upload...');
+                console.log('Sending request to /upload...', selectedFile.name, selectedFile.size);
+                
+                // Test health endpoint first
+                try {
+                    const healthResponse = await fetch('/health');
+                    console.log('Health check:', healthResponse.status);
+                } catch (healthError) {
+                    console.error('Health check failed:', healthError);
+                }
                 
                 const response = await fetch('/upload', {
                     method: 'POST',
-                    body: formData,
-                    headers: {
-                        // Don't set Content-Type, let browser set it for multipart/form-data
-                    }
+                    body: formData
                 });
 
-                console.log('Response status:', response.status);
+                console.log('Response received - Status:', response.status, 'Headers:', [...response.headers.entries()]);
                 
-                if (!response.ok) {
-                    console.error('HTTP error:', response.status, response.statusText);
-                }
-
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
+                let result;
+                try {
                     const text = await response.text();
-                    console.error('Non-JSON response:', text);
-                    throw new Error('Server returned non-JSON response');
+                    console.log('Raw response:', text);
+                    result = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    throw new Error('Unable to parse server response');
                 }
 
-                const result = await response.json();
-                console.log('Response data:', result);
+                console.log('Parsed result:', result);
 
-                if (response.ok && result.success) {
+                if (response.ok && result.success !== false) {
                     displayResults(result);
                 } else {
-                    displayError(result.error || 'An error occurred during processing.');
+                    displayError(result.error || 'Server returned an error');
                 }
             } catch (error) {
-                console.error('Fetch error:', error);
-                displayError('Network error: ' + error.message);
+                console.error('Complete error details:', error);
+                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                    displayError('Connection failed. Please check if the server is running and try again.');
+                } else {
+                    displayError('Network error: ' + error.message);
+                }
             } finally {
                 // Reset button state
                 btnText.style.display = 'inline-block';
