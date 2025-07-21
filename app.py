@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, render_template, flash, redirect, url
 import pytesseract
 from PIL import Image
 import io
+import pdfplumber
 from pdf2image import convert_from_bytes
 from classifier import DocumentClassifier
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -74,38 +75,34 @@ def upload_document():
                 'success': False
             }), 400
         
-        # Process the file with OCR
+        # Process the file with extraction
         try:
             if file_extension == 'pdf':
-                # Process PDF file
+                # Process PDF file using pdfplumber (direct text extraction)
                 file_data = file.read()
-                logging.info("Processing PDF file...")
+                logging.info("Processing PDF file with pdfplumber...")
                 
-                # Convert PDF pages to images
                 try:
-                    images = convert_from_bytes(file_data, dpi=300, first_page=1, last_page=5)  # Limit to first 5 pages
-                    if not images:
-                        return jsonify({
-                            'error': 'No pages could be extracted from the PDF file.'
-                        }), 400
-                    
-                    # Extract text from all pages
+                    # Use pdfplumber for direct text extraction (no OCR needed)
                     extracted_text = ""
-                    for i, image in enumerate(images):
-                        logging.info(f"Processing PDF page {i+1}")
-                        page_text = pytesseract.image_to_string(image, config='--psm 6 --oem 3')
-                        if page_text.strip():
-                            extracted_text += f"{page_text.strip()}\n"
+                    with pdfplumber.open(io.BytesIO(file_data)) as pdf:
+                        for page_num, page in enumerate(pdf.pages, 1):
+                            logging.info(f"Processing PDF page {page_num}")
+                            page_text = page.extract_text()
+                            if page_text:
+                                extracted_text += page_text + "\n"
                     
-                    if not extracted_text.strip():
+                    extracted_text = extracted_text.strip()
+                    
+                    if not extracted_text:
                         return jsonify({
-                            'error': 'No text could be extracted from the PDF pages. Please ensure the PDF contains readable text.'
+                            'error': 'No text could be extracted from the PDF. The PDF may be image-based or corrupted.'
                         }), 400
                         
                 except Exception as pdf_error:
                     logging.error(f"PDF processing error: {str(pdf_error)}")
                     return jsonify({
-                        'error': f'Error processing PDF: {str(pdf_error)}. Please ensure the PDF is not corrupted and contains text.'
+                        'error': f'Error processing PDF: {str(pdf_error)}. Please ensure the PDF is not corrupted.'
                     }), 400
                     
             else:
