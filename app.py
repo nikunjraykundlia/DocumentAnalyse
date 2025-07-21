@@ -37,12 +37,6 @@ def health():
     """Health check endpoint."""
     return jsonify({'status': 'healthy', 'message': 'API is working'})
 
-@app.route('/test')
-def test():
-    """Simple test page."""
-    from flask import send_from_directory
-    return send_from_directory('.', 'test_simple.html')
-
 @app.route('/upload', methods=['POST', 'OPTIONS'])
 def upload_document():
     """
