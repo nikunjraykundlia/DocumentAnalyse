@@ -7,6 +7,18 @@ This is a Flask-based web application that performs OCR (Optical Character Recog
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+UI Design: Beautiful blue-white gradient theme with glassmorphism effects
+Document Support: Enhanced classification for Indian documents (PAN Card, Aadhaar Card)
+
+## Recent Changes
+
+### 2025-07-22: Enhanced Document Classification & UI Redesign
+- Fixed PDF text extraction using pdfplumber for direct text extraction
+- Enhanced document classification with better Indian document support
+- Improved name detection validation with regex patterns
+- Created beautiful blue gradient UI with glassmorphism design
+- Fixed double upload prevention with processing state management
+- Added white gradient text styling for main title
 
 ## System Architecture
 

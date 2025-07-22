@@ -53,11 +53,12 @@
         }
         
         .main-title {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 50%, #bbdefb 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             font-weight: 800;
+            text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
         }
         
         .file-info {
@@ -350,6 +351,7 @@
 
         // File handling
         let selectedFile = null;
+        let isProcessing = false;
 
         // Drag and drop functionality
         uploadArea.addEventListener('dragover', (e) => {
@@ -404,6 +406,12 @@
                 alert('Please select a file first.');
                 return;
             }
+            
+            // Prevent double uploads
+            if (isProcessing) {
+                return;
+            }
+            isProcessing = true;
 
             // Show loading state
             const btnText = classifyBtn.querySelector('.btn-text');
@@ -464,10 +472,11 @@
                     displayError('Network error: ' + error.message);
                 }
             } finally {
-                // Reset button state
+                // Reset button state and processing flag
                 btnText.style.display = 'inline-block';
                 btnLoading.style.display = 'none';
                 classifyBtn.disabled = false;
+                isProcessing = false;
             }
         });
 
