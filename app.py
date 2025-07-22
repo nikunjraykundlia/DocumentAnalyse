@@ -16,7 +16,7 @@ from classifier import DocumentClassifier
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 # Create the Flask app
 app = Flask(__name__)
