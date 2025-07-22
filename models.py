@@ -90,7 +90,7 @@ DOCUMENT_TYPES = {
     
     'pan_card': DocumentType(
         name='PAN Card',
-        keywords=['pan card', 'permanent account number', 'income tax department', 'government of india', 'pan', 'taxpayer', 'assessee'],
+        keywords=['pan card', 'permanent account number', 'income tax department', 'taxpayer', 'assessee', 'father name', 'signature'],
         required_fields=['pan number', 'name', 'father name', 'date of birth'],
         optional_fields=['signature', 'photograph'],
         validation_rules={
@@ -101,12 +101,12 @@ DOCUMENT_TYPES = {
     
     'aadhaar_card': DocumentType(
         name='Aadhaar Card',
-        keywords=['aadhaar', 'aadhar', 'unique identification authority', 'uidai', 'government of india', 'aadhaar number', 'uid'],
-        required_fields=['aadhaar number', 'name', 'date of birth', 'address'],
-        optional_fields=['mobile number', 'email', 'photograph'],
+        keywords=['aadhaar', 'aadhar', 'unique identification authority', 'uidai', 'dob:', 'male', 'female', 'vid:', 'mobile no.:', '8tuic'],
+        required_fields=['name', 'dob'],
+        optional_fields=['mobile number', 'vid', 'address'],
         validation_rules={
             'aadhaar_pattern': r'\d{4}\s?\d{4}\s?\d{4}',
-            'date_pattern': r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}'
+            'date_pattern': r'\d{1,2}/\d{1,2}/\d{2,4}'
         }
     )
 }

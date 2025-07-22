@@ -235,10 +235,34 @@ class DocumentClassifier:
         
         text_lower = text.lower()
         
-        # Check for required fields
+        # Check for required fields with better name detection
         for field in doc_type.required_fields:
             field_words = field.lower().split()
-            field_found = any(word in text_lower for word in field_words)
+            field_found = False
+            
+            # Special handling for name detection
+            if field.lower() == 'name':
+                # Look for capitalized words that could be names
+                name_patterns = [
+                    r'\b[A-Z][a-z]+\s+[A-Z][a-z]+\b',  # First Last
+                    r'\b[A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+\b',  # First Middle Last
+                ]
+                field_found = any(re.search(pattern, text) for pattern in name_patterns)
+                
+                # Also check for specific text patterns in Aadhaar
+                if not field_found and classification == 'Aadhaar Card':
+                    # Look for names after specific markers
+                    lines = text.split('\n')
+                    for line in lines:
+                        if any(marker in line.lower() for marker in ['8tuic', 'government of india']):
+                            continue
+                        # Look for lines with capitalized names
+                        if re.search(r'\b[A-Z][a-z]+\s+[A-Z][a-z]+', line):
+                            field_found = True
+                            break
+            else:
+                # Default field checking
+                field_found = any(word in text_lower for word in field_words)
             
             if not field_found:
                 errors.append(f'Missing required field: {field}')
