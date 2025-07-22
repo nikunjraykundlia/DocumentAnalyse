@@ -15,7 +15,10 @@ logging.basicConfig(level=logging.DEBUG)
 # Create the Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1, x_port=1, x_prefix=1)
+
+# Configure for Replit environment
+if os.environ.get('REPLIT_DB_URL'):
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 # Add CORS headers manually
 @app.after_request
