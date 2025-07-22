@@ -34,6 +34,80 @@ class DocumentClassifier:
         self.use_ai = use_ai and OPENAI_AVAILABLE
         self.openai_client = None
         
+        # Enhanced keyword templates for stronger classification
+        self.keyword_templates = {
+            'Electricity Bill': [
+                'electricity', 'electric', 'power', 'kWh', 'kwh', 'units consumed',
+                'electric bill', 'electricity bill', 'power bill', 'energy bill',
+                'meter reading', 'billing period', 'due date', 'amount due',
+                'electricity charges', 'power consumption', 'energy consumption',
+                'utility bill', 'electric utility', 'power company', 'energy company',
+                'bill number', 'account number', 'service address', 'meter number',
+                'current reading', 'previous reading', 'total units', 'tariff',
+                'fuel adjustment', 'demand charges', 'fixed charges', 'variable charges'
+            ],
+            'Property Tax Bill': [
+                'property tax', 'real estate tax', 'municipal tax', 'council tax',
+                'property assessment', 'assessed value', 'taxable value', 'tax year',
+                'property id', 'property number', 'parcel number', 'folio number',
+                'owner name', 'property address', 'tax amount', 'tax due',
+                'municipal corporation', 'city corporation', 'tax authority',
+                'property type', 'residential', 'commercial', 'industrial',
+                'tax rate', 'assessment roll', 'valuation', 'market value'
+            ],
+            'Birth Certificate': [
+                'birth certificate', 'certificate of birth', 'birth record',
+                'date of birth', 'place of birth', 'born on', 'born at',
+                'father name', 'mother name', 'parents name', 'child name',
+                'registration number', 'certificate number', 'registrar',
+                'vital statistics', 'civil registration', 'birth registration',
+                'hospital', 'medical facility', 'attending physician',
+                'time of birth', 'gender', 'weight at birth', 'nationality'
+            ],
+            'Mobile Phone Bill': [
+                'mobile bill', 'cell phone bill', 'cellular bill', 'phone bill',
+                'mobile number', 'phone number', 'subscriber', 'customer',
+                'plan details', 'monthly charges', 'usage charges', 'roaming charges',
+                'data usage', 'call duration', 'sms count', 'minutes used',
+                'billing cycle', 'due date', 'total amount', 'outstanding amount',
+                'telecom', 'wireless', 'network provider', 'service provider',
+                'airtime', 'data plan', 'voice plan', 'unlimited', 'postpaid', 'prepaid'
+            ],
+            'Water Bill': [
+                'water bill', 'water charges', 'water supply', 'water service',
+                'water consumption', 'water usage', 'gallons', 'liters', 'cubic meters',
+                'meter reading', 'water meter', 'consumption units', 'billing period',
+                'water authority', 'water department', 'municipal water', 'utility water',
+                'service address', 'account number', 'customer id', 'connection number',
+                'current reading', 'previous reading', 'sewerage charges', 'drainage charges'
+            ],
+            'Gas Bill': [
+                'gas bill', 'natural gas', 'gas charges', 'gas consumption',
+                'gas usage', 'therms', 'cubic feet', 'gas meter', 'meter reading',
+                'gas company', 'gas utility', 'gas service', 'gas supply',
+                'heating bill', 'fuel bill', 'energy bill', 'gas account',
+                'billing period', 'due date', 'amount due', 'service address',
+                'customer number', 'account number', 'current reading', 'previous reading'
+            ],
+            'PAN Card': [
+                'permanent account number', 'pan card', 'pan number', 'income tax',
+                'tax identification', 'pancard', 'pan application', 'tan number',
+                'father name', 'date of birth', 'signature', 'photograph',
+                'income tax department', 'government of india', 'nsdl', 'utiitsl',
+                'uti technologies', 'pan services', 'application form', 'form 49a',
+                'aadhaar number', 'proof of identity', 'proof of address', 'pan status'
+            ],
+            'Aadhaar Card': [
+                'aadhaar', 'aadhar', 'unique identification', 'uidai', 'uid number',
+                'aadhaar number', 'enrollment number', 'government of india',
+                'unique identification authority', 'biometric', 'demographic',
+                'resident', 'address proof', 'identity proof', 'aadhaar card',
+                'vid number', 'virtual id', 'masked aadhaar', 'aadhaar enrollment',
+                'update aadhaar', 'aadhaar authentication', 'eaadhaar', 'maadhaar',
+                'download aadhaar', 'aadhaar correction', 'aadhaar update'
+            ]
+        }
+        
         if self.use_ai and OPENAI_AVAILABLE:
             api_key = os.environ.get("OPENAI_API_KEY")
             if api_key and OpenAI:
@@ -75,7 +149,7 @@ class DocumentClassifier:
 
     def _rule_based_classify(self, text: str) -> str:
         """
-        Perform rule-based classification using keyword matching.
+        Perform enhanced rule-based classification using comprehensive keyword templates.
         
         Args:
             text: The text to classify
@@ -85,20 +159,36 @@ class DocumentClassifier:
         """
         text_lower = text.lower()
         
-        # Score each document type based on keyword matches
-        scores = {}
-        for doc_key, doc_type in DOCUMENT_TYPES.items():
-            score = 0
-            for keyword in doc_type.keywords:
-                if keyword.lower() in text_lower:
-                    score += 1
-            scores[doc_key] = score
+        # Enhanced rule-based classification using comprehensive keyword templates
+        best_match = None
+        max_score = 0
         
-        # Find the document type with the highest score
-        if scores:
-            best_match = max(scores.items(), key=lambda x: x[1])
-            if best_match[1] > 0:  # At least one keyword matched
-                return DOCUMENT_TYPES[best_match[0]].name
+        for doc_type, keywords in self.keyword_templates.items():
+            # Calculate match score based on keyword frequency and relevance
+            score = 0
+            keyword_matches = 0
+            
+            for keyword in keywords:
+                if keyword.lower() in text_lower:
+                    keyword_matches += 1
+                    # Give higher weight to more specific keywords
+                    if len(keyword.split()) > 1:  # Multi-word keywords are more specific
+                        score += 2
+                    else:
+                        score += 1
+            
+            # Normalize score by total keywords to prevent bias toward categories with more keywords
+            if len(keywords) > 0:
+                normalized_score = (score * keyword_matches) / len(keywords)
+                
+                if normalized_score > max_score and keyword_matches >= 1:  # At least one keyword must match
+                    max_score = normalized_score
+                    best_match = doc_type
+        
+        # Return best match if confidence threshold is met
+        if best_match and max_score > 0.02:  # Minimum confidence threshold
+            logging.info(f"Rule-based classification: {best_match} (score: {max_score:.3f})")
+            return best_match
         
         return 'Unknown'
 

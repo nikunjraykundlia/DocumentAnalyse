@@ -410,6 +410,8 @@
                 e.preventDefault();
                 return;
             }
+            // Prevent multiple rapid clicks
+            e.preventDefault();
             fileInput.click();
         });
 
@@ -420,6 +422,10 @@
             
             if (e.target.files.length > 0) {
                 handleFileSelect(e.target.files[0]);
+                // Clear the input to prevent double selection dialog
+                setTimeout(() => {
+                    e.target.value = '';
+                }, 100);
             }
         });
 

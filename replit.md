@@ -14,11 +14,13 @@ Document Support: Enhanced classification for Indian documents (PAN Card, Aadhaa
 
 ### 2025-07-22: Enhanced Document Classification & UI Redesign
 - Fixed PDF text extraction using pdfplumber for direct text extraction
-- Enhanced document classification with better Indian document support
-- Improved name detection validation with regex patterns
-- Created beautiful blue gradient UI with glassmorphism design
-- Fixed double upload prevention with processing state management
-- Added white gradient text styling for main title
+- Enhanced document classification with comprehensive keyword templates for all document types
+- Added 25+ keywords per document type for stronger classification accuracy
+- Improved scoring algorithm with normalized confidence thresholds
+- Fixed double file selection popup issue with enhanced JavaScript handling
+- Created beautiful blue gradient UI with glassmorphism design and white gradient headlines
+- Enhanced ProxyFix configuration for better Replit domain connectivity
+- Improved name detection validation with regex patterns for Indian documents
 
 ## System Architecture
 
