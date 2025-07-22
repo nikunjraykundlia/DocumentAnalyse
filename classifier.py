@@ -18,13 +18,21 @@ except ImportError:
     OpenAI = None  # type: ignore
     OPENAI_AVAILABLE = False
 
+# Optional Ollama integration
+try:
+    import ollama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    ollama = None # type: ignore
+    OLLAMA_AVAILABLE = False
+
 
 class DocumentClassifier:
     """
     Document classifier that uses rule-based logic and optional AI enhancement.
     """
     
-    def __init__(self, use_ai: bool = True):
+    def __init__(self, use_ai: bool = True, use_ollama: bool = True):
         """
         Initialize the classifier.
         
@@ -32,6 +40,7 @@ class DocumentClassifier:
             use_ai: Whether to use AI-enhanced classification (requires OpenAI API key)
         """
         self.use_ai = use_ai and OPENAI_AVAILABLE
+        self.use_ollama = use_ollama and OLLAMA_AVAILABLE
         self.openai_client = None
         
         # Enhanced keyword templates for stronger classification
@@ -117,7 +126,17 @@ class DocumentClassifier:
                 self.use_ai = False
                 logging.warning("OpenAI API key not found, using rule-based classification only")
         
-        logging.info(f"DocumentClassifier initialized (AI enabled: {self.use_ai})")
+        if self.use_ollama:
+            try:
+                # Check if the Ollama service is running
+                ollama.list()
+                self.ollama_client = ollama
+                logging.info("Ollama integration enabled")
+            except Exception as e:
+                self.use_ollama = False
+                logging.warning(f"Ollama integration failed, using rule-based/OpenAI only. Error: {e}")
+
+        logging.info(f"DocumentClassifier initialized (OpenAI enabled: {self.use_ai}, Ollama enabled: {self.use_ollama})")
 
     def classify(self, text: str) -> str:
         """
@@ -135,62 +154,131 @@ class DocumentClassifier:
         # First try rule-based classification
         rule_based_result = self._rule_based_classify(text)
         
-        # If AI is available and rule-based classification is uncertain, use AI
+        # If classification is uncertain, try Ollama for a private, local classification
+        if self.use_ollama and rule_based_result == 'Unknown':
+            try:
+                ollama_result = self._ollama_classify(text)
+                if ollama_result and ollama_result != 'Unknown':
+                    logging.info(f"Ollama classification used: {ollama_result}")
+                    return ollama_result
+            except Exception as e:
+                logging.error(f"Ollama classification failed: {str(e)}")
+
+        # If classification is still uncertain, use OpenAI as a final fallback
         if self.use_ai and rule_based_result == 'Unknown':
             try:
                 ai_result = self._ai_classify(text)
                 if ai_result and ai_result != 'Unknown':
-                    logging.info(f"AI classification used: {ai_result}")
+                    logging.info(f"OpenAI classification used: {ai_result}")
                     return ai_result
             except Exception as e:
-                logging.error(f"AI classification failed: {str(e)}")
+                logging.error(f"OpenAI classification failed: {str(e)}")
         
         return rule_based_result
 
     def _rule_based_classify(self, text: str) -> str:
         """
-        Perform enhanced rule-based classification using comprehensive keyword templates.
-        
-        Args:
-            text: The text to classify
-            
-        Returns:
-            The classification label
+        Enhanced rule-based classification with unique keyword prioritization and tie-breaker for Aadhaar vs PAN.
         """
         text_lower = text.lower()
-        
-        # Enhanced rule-based classification using comprehensive keyword templates
-        best_match = None
-        max_score = 0
-        
+        # Unique identifiers and patterns
+        aadhaar_keywords = [
+            'aadhaar', 'aadhar', 'unique identification authority of india', 'uidai', 'your aadhaar no', 'aadhaar number'
+        ]
+        pan_keywords = [
+            'permanent account number', 'pan card', 'income tax department', 'pan number', 'pancard', 'tan number'
+        ]
+        pan_pattern = r'[A-Z]{5}[0-9]{4}[A-Z]{1}'
+        # Score all types as before
+        scores = {}
         for doc_type, keywords in self.keyword_templates.items():
-            # Calculate match score based on keyword frequency and relevance
             score = 0
             keyword_matches = 0
-            
             for keyword in keywords:
                 if keyword.lower() in text_lower:
                     keyword_matches += 1
                     # Give higher weight to more specific keywords
-                    if len(keyword.split()) > 1:  # Multi-word keywords are more specific
+                    if len(keyword.split()) > 1:
                         score += 2
                     else:
                         score += 1
-            
-            # Normalize score by total keywords to prevent bias toward categories with more keywords
+            # Extra weight for unique Aadhaar keywords
+            if doc_type == 'Aadhaar Card':
+                for kw in aadhaar_keywords:
+                    if kw in text_lower:
+                        score += 5
+            # Extra weight for unique PAN keywords
+            if doc_type == 'PAN Card':
+                for kw in pan_keywords:
+                    if kw in text_lower:
+                        score += 5
+                # Extra weight if PAN pattern is found
+                if re.search(pan_pattern, text):
+                    score += 10
             if len(keywords) > 0:
                 normalized_score = (score * keyword_matches) / len(keywords)
-                
-                if normalized_score > max_score and keyword_matches >= 1:  # At least one keyword must match
-                    max_score = normalized_score
-                    best_match = doc_type
-        
-        # Return best match if confidence threshold is met
-        if best_match and max_score > 0.02:  # Minimum confidence threshold
+                scores[doc_type] = normalized_score
+            else:
+                scores[doc_type] = 0
+        # Tie-breaker: Aadhaar vs PAN
+        aadhaar_score = scores.get('Aadhaar Card', 0)
+        pan_score = scores.get('PAN Card', 0)
+        # If Aadhaar unique keywords present, prefer Aadhaar unless PAN pattern is found
+        aadhaar_present = any(kw in text_lower for kw in aadhaar_keywords)
+        pan_pattern_found = re.search(pan_pattern, text)
+        if aadhaar_present and not pan_pattern_found:
+            if aadhaar_score > 0.02:
+                logging.info(f"Rule-based classification (Aadhaar tie-break): Aadhaar Card (score: {aadhaar_score:.3f})")
+                return 'Aadhaar Card'
+        # If both scores are close, prefer Aadhaar if Aadhaar keywords are present
+        if aadhaar_present and abs(aadhaar_score - pan_score) < 0.1:
+            logging.info(f"Rule-based classification (Aadhaar tie-break): Aadhaar Card (score: {aadhaar_score:.3f})")
+            return 'Aadhaar Card'
+        # If PAN pattern is found, prefer PAN
+        if pan_pattern_found and pan_score > 0.02:
+            logging.info(f"Rule-based classification (PAN pattern): PAN Card (score: {pan_score:.3f})")
+            return 'PAN Card'
+        # Otherwise, pick the best match
+        best_match = max(scores, key=scores.get)
+        max_score = scores[best_match]
+        if max_score > 0.02:
             logging.info(f"Rule-based classification: {best_match} (score: {max_score:.3f})")
             return best_match
-        
         return 'Unknown'
+
+    def _ollama_classify(self, text: str) -> str:
+        """
+        Classify a document using a local Ollama model.
+        """
+        if not self.ollama_client:
+            return 'Unknown'
+
+        prompt = f"""
+        You are an expert document classifier. Your task is to classify the given text into one of the following categories: {', '.join(DOCUMENT_TYPES)}.
+        Respond with only the category name. If you cannot confidently classify the document, respond with 'Unidentified Document'.
+
+        Document Text:
+        ---
+        {text[:4000]}  # Truncate to avoid excessive length
+        ---
+        Category:"""
+
+        try:
+            response = self.ollama_client.chat(
+                model='llama3',  # You can change this to your preferred model
+                messages=[{'role': 'user', 'content': prompt}],
+                options={'temperature': 0.0}
+            )
+            classification = response['message']['content'].strip()
+
+            if classification in DOCUMENT_TYPES:
+                return classification
+            else:
+                logging.warning(f"Ollama returned an unexpected classification: '{classification}'")
+                return 'Unidentified Document'
+        except Exception as e:
+            logging.error(f"Ollama API call failed: {e}")
+            return 'Unknown'
 
     def _ai_classify(self, text: str) -> str:
         """

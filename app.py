@@ -6,6 +6,12 @@ from PIL import Image
 import io
 import pdfplumber
 from pdf2image import convert_from_bytes
+from dotenv import load_dotenv
+
+# Load environment variables before anything else
+load_dotenv()
+openai_api_key = os.getenv('OPENAI_API_KEY')
+
 from classifier import DocumentClassifier
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -29,7 +35,8 @@ def after_request(response):
     return response
 
 # Initialize the document classifier
-classifier = DocumentClassifier()
+classifier = DocumentClassifier(use_ai=True, use_ollama=True)
+
 
 @app.route('/')
 def index():
@@ -134,6 +141,10 @@ def upload_document():
         try:
             classification_label = classifier.classify(extracted_text)
             confidence_score = classifier.get_confidence_score(extracted_text, classification_label)
+
+            # If confidence is below 50%, classify as 'Unidentified Document'
+            if confidence_score < 0.5:
+                classification_label = 'Unidentified Document'
         except Exception as e:
             logging.error(f"Classification error: {str(e)}")
             classification_label = 'Unknown'

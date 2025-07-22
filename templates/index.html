@@ -17,16 +17,18 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            min-height: 30px; /* Reduce min height for a more compact card */
         }
         
         .upload-area {
             border: 3px dashed #667eea;
-            border-radius: 1rem;
-            padding: 3rem;
+            border-radius: 2rem; /* Less rounded, more rectangular */
+            padding: 2rem;
             text-align: center;
             transition: all 0.3s ease;
             cursor: pointer;
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            margin-bottom: 0.5rem; /* Add more space below upload area */
         }
         
         .upload-area.processing {
@@ -136,6 +138,16 @@
         .text-muted {
             color: #666 !important;
         }
+        /* Make Supported Document Types section text white, but keep icons blue */
+        .supported-doc-types, .supported-doc-types h5, .supported-doc-types strong, .supported-doc-types small {
+            color: #fff !important;
+        }
+        .supported-doc-types i {
+            color: #4F8CFF !important;
+        }
+        #multi-results {
+            margin-top: 2.5rem; /* Add space above results */
+        }
     </style>
 </head>
 <body>
@@ -165,27 +177,19 @@
                                 <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
                                 <h5>Drag & Drop or Click to Upload</h5>
                                 <p class="text-muted mb-3">
-                                    Supported formats: PNG, JPG, JPEG, GIF, BMP, TIFF, PDF
+                                    Supported formats: PNG, JPG, JPEG, GIF, BMP, TIFF, PDF, DOCX
                                 </p>
-                                <input type="file" name="file" id="file-input" accept="image/*,.pdf" style="display: none;">
-                                <button type="button" class="btn gradient-btn px-4 py-2" onclick="document.getElementById('file-input').click()">
+                                <input type="file" name="file" id="file-input" accept="image/*,.pdf,.docx" style="display: none;" multiple>
+                                <button type="button" class="btn gradient-btn px-4 py-2" id="choose-file-btn">
                                     <i class="fas fa-folder-open me-2"></i>Choose File
                                 </button>
                             </div>
                             
-                            <div class="file-info" id="file-info">
-                                <div class="alert alert-info">
-                                    <i class="fas fa-file me-2"></i>
-                                    <span id="file-name"></span>
-                                    <span class="badge bg-secondary ms-2" id="file-size"></span>
-                                </div>
-                                <button type="submit" class="btn gradient-btn px-4 py-2" id="classify-btn">
-                                    <span class="btn-text">
-                                        <i class="fas fa-robot me-2"></i>Classify Document
-                                    </span>
-                                    <span class="btn-loading" style="display: none;">
-                                        <span class="spinner-border spinner-border-sm me-2"></span>Processing...
-                                    </span>
+                            <div id="uploaded-files-section" style="display: none;">
+                                <h6 class="mt-4">Selected Files:</h6>
+                                <ul class="list-group" id="uploaded-files-list"></ul>
+                                <button type="button" class="btn gradient-btn px-4 py-2 mt-3" id="classify-btn" disabled>
+                                    <i class="fas fa-cogs me-2"></i>Classify Documents
                                 </button>
                             </div>
                         </form>
@@ -194,7 +198,8 @@
             </div>
         </div>
 
-        <!-- Results Section -->
+        <!-- Results Section (move this above Supported Document Types) -->
+        <div id="multi-results"></div>
         <div class="row justify-content-center">
             <div class="col-lg-10">
                 <div class="result-card" id="result-card">
@@ -255,9 +260,8 @@
                 </div>
             </div>
         </div>
-
-        <!-- Supported Document Types -->
-        <div class="row mt-5">
+        <!-- Supported Document Types (keep this at the end) -->
+        <div class="row mt-5 supported-doc-types">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
@@ -269,73 +273,73 @@
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-bolt text-warning me-3"></i>
+                                    <i class="fas fa-bolt me-3"></i>
                                     <div>
                                         <strong>Electricity Bills</strong>
-                                        <br><small class="text-muted">Power, energy, kWh usage</small>
+                                        <br><small>Power, energy, kWh usage</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-home text-info me-3"></i>
+                                    <i class="fas fa-home me-3"></i>
                                     <div>
                                         <strong>Property Tax Bills</strong>
-                                        <br><small class="text-muted">Real estate, municipal tax</small>
+                                        <br><small>Real estate, municipal tax</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-baby text-success me-3"></i>
+                                    <i class="fas fa-baby me-3"></i>
                                     <div>
                                         <strong>Birth Certificates</strong>
-                                        <br><small class="text-muted">Official birth documents</small>
+                                        <br><small>Official birth documents</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-mobile-alt text-primary me-3"></i>
+                                    <i class="fas fa-mobile-alt me-3"></i>
                                     <div>
                                         <strong>Mobile Phone Bills</strong>
-                                        <br><small class="text-muted">Cellular, wireless bills</small>
+                                        <br><small>Cellular, wireless bills</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-tint text-info me-3"></i>
+                                    <i class="fas fa-tint me-3"></i>
                                     <div>
                                         <strong>Water Bills</strong>
-                                        <br><small class="text-muted">Water service, usage</small>
+                                        <br><small>Water service, usage</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-fire text-danger me-3"></i>
+                                    <i class="fas fa-fire me-3"></i>
                                     <div>
                                         <strong>Gas Bills</strong>
-                                        <br><small class="text-muted">Natural gas, heating</small>
+                                        <br><small>Natural gas, heating</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-id-card text-warning me-3"></i>
+                                    <i class="fas fa-id-card me-3"></i>
                                     <div>
                                         <strong>PAN Card (India)</strong>
-                                        <br><small class="text-muted">Permanent Account Number</small>
+                                        <br><small>Permanent Account Number</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-address-card text-success me-3"></i>
+                                    <i class="fas fa-address-card me-3"></i>
                                     <div>
                                         <strong>Aadhaar Card (India)</strong>
-                                        <br><small class="text-muted">Unique Identification</small>
+                                        <br><small>Unique Identification</small>
                                     </div>
                                 </div>
                             </div>
@@ -351,21 +355,22 @@
         // DOM elements
         const uploadArea = document.getElementById('upload-area');
         const fileInput = document.getElementById('file-input');
-        const fileInfo = document.getElementById('file-info');
-        const fileName = document.getElementById('file-name');
-        const fileSize = document.getElementById('file-size');
-        const uploadForm = document.getElementById('upload-form');
+        const uploadedFilesSection = document.getElementById('uploaded-files-section');
+        const uploadedFilesList = document.getElementById('uploaded-files-list');
         const classifyBtn = document.getElementById('classify-btn');
+        const uploadForm = document.getElementById('upload-form');
+        const chooseFileBtn = document.getElementById('choose-file-btn');
         const resultCard = document.getElementById('result-card');
+        const multiResultsContainer = document.getElementById('multi-results');
 
         // Upload state management
         const uploadState = {
-            selectedFile: null,
+            selectedFiles: [],
             isProcessing: false,
             uploadId: null,
             
             reset() {
-                this.selectedFile = null;
+                this.selectedFiles = [];
                 this.isProcessing = false;
                 this.uploadId = null;
             },
@@ -394,71 +399,76 @@
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
-            
-            if (uploadState.isProcessing) {
-                return;
-            }
-            
+            if (uploadState.isProcessing) return;
             const files = e.dataTransfer.files;
             if (files.length > 0) {
-                handleFileSelect(files[0]);
+                handleMultipleFiles(files);
             }
         });
 
-        uploadArea.addEventListener('click', (e) => {
-            if (uploadState.isProcessing) {
-                e.preventDefault();
-                return;
-            }
-            // Prevent multiple rapid clicks
-            e.preventDefault();
-            fileInput.click();
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (uploadState.isProcessing) {
-                return;
-            }
-            
-            if (e.target.files.length > 0) {
-                handleFileSelect(e.target.files[0]);
-                // Clear the input to prevent double selection dialog
-                setTimeout(() => {
-                    e.target.value = '';
-                }, 100);
+        chooseFileBtn.addEventListener('click', () => {
+            if (!uploadState.isProcessing) {
+                fileInput.click();
             }
         });
 
-        function handleFileSelect(file) {
-            // Clear any previous state
-            uploadState.reset();
-            
-            uploadState.selectedFile = file;
-            fileName.textContent = file.name;
-            fileSize.textContent = formatFileSize(file.size);
-            fileInfo.style.display = 'block';
-            resultCard.style.display = 'none';
-            
-            // Ensure button is in ready state
-            resetButtonState();
+        classifyBtn.addEventListener('click', () => {
+            if (uploadState.selectedFiles.length > 0 && !uploadState.isProcessing) {
+                uploadState.setProcessing(true);
+                setLoadingState(true);
+                createMultiResultsContainer();
+                uploadState.selectedFiles.forEach((file, idx) => {
+                    performUploadMulti(file, idx);
+                });
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                handleMultipleFiles(fileInput.files);
+            }
+        });
+
+        function handleMultipleFiles(files) {
+            uploadState.selectedFiles = Array.from(files);
+            uploadedFilesList.innerHTML = '';
+            multiResultsContainer.innerHTML = '';
+
+            if (uploadState.selectedFiles.length > 0) {
+                uploadState.selectedFiles.forEach(file => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.textContent = file.name;
+                    const span = document.createElement('span');
+                    span.className = 'badge bg-secondary';
+                    span.textContent = formatFileSize(file.size);
+                    li.appendChild(span);
+                    uploadedFilesList.appendChild(li);
+                });
+                uploadedFilesSection.style.display = 'block';
+                classifyBtn.disabled = false;
+            } else {
+                uploadedFilesSection.style.display = 'none';
+                classifyBtn.disabled = true;
+            }
         }
 
         function resetButtonState() {
-            const btnText = classifyBtn.querySelector('.btn-text');
-            const btnLoading = classifyBtn.querySelector('.btn-loading');
-            btnText.style.display = 'inline-block';
-            btnLoading.style.display = 'none';
-            classifyBtn.disabled = false;
             uploadArea.classList.remove('processing');
+            classifyBtn.disabled = false;
+            uploadState.reset();
         }
 
-        function setLoadingState() {
-            const btnText = classifyBtn.querySelector('.btn-text');
-            const btnLoading = classifyBtn.querySelector('.btn-loading');
-            btnText.style.display = 'none';
-            btnLoading.style.display = 'inline-block';
-            classifyBtn.disabled = true;
-            uploadArea.classList.add('processing');
+        function setLoadingState(isProcessing) {
+            if(isProcessing) {
+                uploadArea.classList.add('processing');
+                classifyBtn.disabled = true;
+                classifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+            } else {
+                uploadArea.classList.remove('processing');
+                classifyBtn.disabled = false;
+                classifyBtn.innerHTML = '<i class="fas fa-cogs me-2"></i>Classify Documents';
+            }
         }
 
         function formatFileSize(bytes) {
@@ -469,74 +479,42 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // Single upload function with proper state management
-        async function performUpload() {
-            if (!uploadState.selectedFile) {
-                alert('Please select a file first.');
-                return;
-            }
-            
-            // Check if already processing
-            if (uploadState.isProcessing) {
-                console.log('Upload already in progress, ignoring duplicate request');
-                return;
-            }
-            
-            // Set processing state atomically
-            uploadState.setProcessing(true);
-            const currentUploadId = uploadState.uploadId;
-            
-            setLoadingState();
 
-            try {
-                const formData = new FormData();
-                formData.append('file', uploadState.selectedFile);
 
-                console.log(`[${currentUploadId}] Uploading file:`, uploadState.selectedFile.name);
-                
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
+        function performUploadMulti(file, idx) {
+            const formData = new FormData();
+            formData.append('file', file);
 
-                // Check if this upload is still the current one
-                if (uploadState.uploadId !== currentUploadId) {
-                    console.log(`[${currentUploadId}] Upload superseded, ignoring response`);
-                    return;
-                }
-
-                console.log(`[${currentUploadId}] Response status:`, response.status);
-                
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    return response.json().then(err => { 
+                        const error = new Error(err.error || 'Unknown server error');
+                        error.response = err;
+                        throw error;
+                    });
                 }
-                
-                const result = await response.json();
-                console.log(`[${currentUploadId}] Processing complete:`, result.label);
-
-                displayResults(result);
-                
-            } catch (error) {
-                // Only show error if this upload is still current
-                if (uploadState.uploadId === currentUploadId) {
-                    console.error(`[${currentUploadId}] Upload failed:`, error);
-                    displayError('Upload failed: ' + error.message);
-                }
-            } finally {
-                // Only reset state if this upload is still current
-                if (uploadState.uploadId === currentUploadId) {
+                return response.json();
+            })
+            .then(result => {
+                displayMultiResult(result, file, idx);
+            })
+            .catch(error => {
+                console.error(`Error uploading ${file.name}:`, error);
+                displayMultiError(error.message, file, idx);
+            })
+            .finally(() => {
+                // Check if all files are processed
+                const processedCount = document.querySelectorAll('#multi-results .card').length;
+                if (processedCount === uploadState.selectedFiles.length) {
                     uploadState.setProcessing(false);
-                    resetButtonState();
-                    console.log(`[${currentUploadId}] Upload process complete`);
+                    setLoadingState(false);
                 }
-            }
+            });
         }
-
-        // Form submission handler
-        uploadForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            performUpload();
-        });
 
         function displayResults(result) {
             // Update classification badge
@@ -579,26 +557,72 @@
             resultCard.scrollIntoView({ behavior: 'smooth' });
         }
 
-        function displayError(errorMessage) {
-            const badge = document.getElementById('classification-badge');
-            badge.textContent = 'Error';
-            badge.className = 'badge fs-6 me-3 bg-danger';
+        function displayMultiResult(result, file, idx) {
+            // Dynamically create a result card for each file
+            const resultsContainer = document.getElementById('multi-results') || createMultiResultsContainer();
+            const card = document.createElement('div');
+            card.className = 'card gradient-card mb-4';
+            card.innerHTML = `
+                <div class="card-header card-header-gradient d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>File: ${file.name}</h5>
+                    <span class="badge bg-secondary">${file.type || 'Unknown Type'}</span>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6>Document Type</h6>
+                            <div class="d-flex align-items-center">
+                                <span class="badge fs-6 me-3 ${getBadgeClass(result.label)}">${result.label}</span>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between small text-muted mb-1">
+                                        <span>Confidence</span>
+                                        <span>${Math.round((result.confidence || 0) * 100)}%</span>
+                                    </div>
+                                    <div class="confidence-bg">
+                                        <div class="confidence-bar h-100" style="width: ${Math.round((result.confidence || 0) * 100)}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Validation Status</h6>
+                            <div>${result.validation_errors && result.validation_errors.length > 0 ? '<span class="badge bg-warning">Issues Found</span>' : '<span class="badge bg-success">Valid</span>'}</div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <h6>Extracted Text</h6>
+                        <div class="card bg-dark"><div class="card-body"><div class="text-preview">${result.text || 'No text extracted'}</div></div></div>
+                    </div>
+                </div>
+            `;
+            resultsContainer.appendChild(card);
+        }
 
-            document.getElementById('confidence-text').textContent = '0%';
-            document.getElementById('confidence-bar').style.width = '0%';
+        function displayMultiError(error, file, idx) {
+            const resultsContainer = document.getElementById('multi-results') || createMultiResultsContainer();
+            const card = document.createElement('div');
+            card.className = 'card gradient-card mb-4';
+            card.innerHTML = `
+                <div class="card-header card-header-gradient d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>File: ${file.name}</h5>
+                    <span class="badge bg-secondary">${file.type || 'Unknown Type'}</span>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">Upload failed: ${error.message}</div>
+                </div>
+            `;
+            resultsContainer.appendChild(card);
+        }
 
-            const validationStatus = document.getElementById('validation-status');
-            validationStatus.innerHTML = '<span class="badge bg-danger">Error</span>';
-
-            const validationErrors = document.getElementById('validation-errors');
-            const errorList = document.getElementById('error-list');
-            errorList.innerHTML = `<li class="list-group-item"><i class="fas fa-times-circle text-danger me-2"></i>${errorMessage}</li>`;
-            validationErrors.style.display = 'block';
-
-            document.getElementById('extracted-text').textContent = 'Error occurred during processing';
-
-            resultCard.style.display = 'block';
-            resultCard.scrollIntoView({ behavior: 'smooth' });
+        function createMultiResultsContainer() {
+            let container = document.getElementById('multi-results');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'multi-results';
+                document.querySelector('.container').appendChild(container);
+            }
+            container.innerHTML = '';
+            return container;
         }
 
         function getBadgeClass(label) {
@@ -611,6 +635,7 @@
                 'Gas Bill': 'bg-danger',
                 'PAN Card': 'bg-warning',
                 'Aadhaar Card': 'bg-success',
+                'Unidentified Document': 'bg-secondary',
                 'Unknown': 'bg-secondary'
             };
             return classes[label] || 'bg-secondary';
