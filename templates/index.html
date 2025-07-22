@@ -29,6 +29,12 @@
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
         }
         
+        .upload-area.processing {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
         .upload-area:hover, .upload-area.dragover {
             border-color: #764ba2;
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
@@ -53,12 +59,13 @@
         }
         
         .main-title {
-            background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 50%, #bbdefb 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 30%, #e1ecff 70%, #ffffff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             font-weight: 800;
-            text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
+            text-shadow: 0 4px 20px rgba(255, 255, 255, 0.8);
+            filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.5));
         }
         
         .file-info {
@@ -95,10 +102,12 @@
             font-family: 'Courier New', monospace;
             font-size: 0.9rem;
             white-space: pre-wrap;
-            background: rgba(102, 126, 234, 0.05);
-            border: 1px solid rgba(102, 126, 234, 0.2);
+            background: rgba(30, 40, 50, 0.9);
+            border: 1px solid rgba(102, 126, 234, 0.3);
             border-radius: 0.5rem;
             padding: 1rem;
+            color: #ffffff !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         }
         
         .badge-gradient {
@@ -372,7 +381,12 @@
             }
         });
 
-        uploadArea.addEventListener('click', () => {
+        uploadArea.addEventListener('click', (e) => {
+            // Prevent click if processing
+            if (isProcessing) {
+                e.preventDefault();
+                return;
+            }
             fileInput.click();
         });
 
@@ -383,11 +397,21 @@
         });
 
         function handleFileSelect(file) {
+            // Reset processing state when new file is selected
+            isProcessing = false;
+            classifyBtn.disabled = false;
+            
             selectedFile = file;
             fileName.textContent = file.name;
             fileSize.textContent = formatFileSize(file.size);
             fileInfo.style.display = 'block';
             resultCard.style.display = 'none';
+            
+            // Reset button text in case it was left in loading state
+            const btnText = classifyBtn.querySelector('.btn-text');
+            const btnLoading = classifyBtn.querySelector('.btn-loading');
+            btnText.style.display = 'inline-block';
+            btnLoading.style.display = 'none';
         }
 
         function formatFileSize(bytes) {
@@ -407,11 +431,13 @@
                 return;
             }
             
-            // Prevent double uploads
+            // Prevent double uploads - check and set processing state atomically
             if (isProcessing) {
+                console.log('Already processing, ignoring duplicate submission');
                 return;
             }
             isProcessing = true;
+            console.log('Starting document processing...');
 
             // Show loading state
             const btnText = classifyBtn.querySelector('.btn-text');
@@ -419,6 +445,9 @@
             btnText.style.display = 'none';
             btnLoading.style.display = 'inline-block';
             classifyBtn.disabled = true;
+            
+            // Disable upload area during processing
+            uploadArea.classList.add('processing');
 
             try {
                 const formData = new FormData();
@@ -477,6 +506,10 @@
                 btnLoading.style.display = 'none';
                 classifyBtn.disabled = false;
                 isProcessing = false;
+                
+                // Re-enable upload area
+                uploadArea.classList.remove('processing');
+                console.log('Processing complete, system ready for next upload');
             }
         });
 
