@@ -251,7 +251,7 @@ class DocumentClassifier:
         Classify a document using a local Ollama model.
         """
         if not self.ollama_client:
-            return 'Unknown'
+            return 'Unidentified Document'
 
         prompt = f"""
         You are an expert document classifier. Your task is to classify the given text into one of the following categories: {', '.join(DOCUMENT_TYPES)}.
@@ -278,7 +278,7 @@ class DocumentClassifier:
                 return 'Unidentified Document'
         except Exception as e:
             logging.error(f"Ollama API call failed: {e}")
-            return 'Unknown'
+            return 'Unidentified Document'
 
     def _ai_classify(self, text: str) -> str:
         """
@@ -382,6 +382,40 @@ class DocumentClassifier:
             confidence = min(confidence + (required_field_matches * 0.1), 1.0)
         
         return round(confidence, 2)
+
+    def answer_question(self, question: str, context: str) -> str:
+        """
+        Answer a user's question based on the document's context using Ollama.
+        """
+        if not self.use_ollama or not self.ollama_client:
+            return "I can't answer questions right now as the chat functionality is not enabled."
+
+        prompt = f"""
+        You are 'Document Chat', a professional AI assistant for analyzing documents.
+        Your task is to answer questions based *only* on the provided document text.
+        - Be direct and concise.
+        - Do not use conversational phrases like 'Based on the text...' or 'The answer is...'.
+        - If the answer isn't in the text, state: 'The answer could not be found in the provided document(s).'
+        - Do not use any external knowledge.
+
+        Context:
+        ---
+        {context}
+        ---
+        Question: {question}
+        Answer:"""
+
+        try:
+            response = self.ollama_client.chat(
+                model='llama3',
+                messages=[{'role': 'user', 'content': prompt}],
+                options={'temperature': 0.1}
+            )
+            answer = response['message']['content'].strip()
+            return answer
+        except Exception as e:
+            logging.error(f"Ollama Q&A failed: {e}")
+            return "I'm sorry, but I encountered an error while trying to answer your question."
 
     def validate(self, classification: str, text: str) -> List[str]:
         """

@@ -191,3 +191,22 @@ def internal_error(e):
         'error': 'Internal server error. Please try again.',
         'success': False
     }), 500
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    """
+    Handle chatbot questions about a document.
+    """
+    data = request.get_json()
+    if not data or 'question' not in data or 'context' not in data:
+        return jsonify({'error': 'Invalid request. Missing question or context.'}), 400
+
+    question = data['question']
+    context = data['context']
+
+    try:
+        answer = classifier.answer_question(question, context)
+        return jsonify({'answer': answer})
+    except Exception as e:
+        logging.error(f"Chat endpoint error: {str(e)}")
+        return jsonify({'error': 'An error occurred while getting the answer.'}), 500
