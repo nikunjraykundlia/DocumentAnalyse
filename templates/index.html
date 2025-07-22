@@ -358,14 +358,33 @@
         const classifyBtn = document.getElementById('classify-btn');
         const resultCard = document.getElementById('result-card');
 
-        // File handling
-        let selectedFile = null;
-        let isProcessing = false;
+        // Upload state management
+        const uploadState = {
+            selectedFile: null,
+            isProcessing: false,
+            uploadId: null,
+            
+            reset() {
+                this.selectedFile = null;
+                this.isProcessing = false;
+                this.uploadId = null;
+            },
+            
+            setProcessing(processing) {
+                this.isProcessing = processing;
+                if (processing) {
+                    this.uploadId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    console.log('Starting upload with ID:', this.uploadId);
+                }
+            }
+        };
 
         // Drag and drop functionality
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            uploadArea.classList.add('dragover');
+            if (!uploadState.isProcessing) {
+                uploadArea.classList.add('dragover');
+            }
         });
 
         uploadArea.addEventListener('dragleave', () => {
@@ -375,6 +394,11 @@
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
+            
+            if (uploadState.isProcessing) {
+                return;
+            }
+            
             const files = e.dataTransfer.files;
             if (files.length > 0) {
                 handleFileSelect(files[0]);
@@ -382,8 +406,7 @@
         });
 
         uploadArea.addEventListener('click', (e) => {
-            // Prevent click if processing
-            if (isProcessing) {
+            if (uploadState.isProcessing) {
                 e.preventDefault();
                 return;
             }
@@ -391,27 +414,45 @@
         });
 
         fileInput.addEventListener('change', (e) => {
+            if (uploadState.isProcessing) {
+                return;
+            }
+            
             if (e.target.files.length > 0) {
                 handleFileSelect(e.target.files[0]);
             }
         });
 
         function handleFileSelect(file) {
-            // Reset processing state when new file is selected
-            isProcessing = false;
-            classifyBtn.disabled = false;
+            // Clear any previous state
+            uploadState.reset();
             
-            selectedFile = file;
+            uploadState.selectedFile = file;
             fileName.textContent = file.name;
             fileSize.textContent = formatFileSize(file.size);
             fileInfo.style.display = 'block';
             resultCard.style.display = 'none';
             
-            // Reset button text in case it was left in loading state
+            // Ensure button is in ready state
+            resetButtonState();
+        }
+
+        function resetButtonState() {
             const btnText = classifyBtn.querySelector('.btn-text');
             const btnLoading = classifyBtn.querySelector('.btn-loading');
             btnText.style.display = 'inline-block';
             btnLoading.style.display = 'none';
+            classifyBtn.disabled = false;
+            uploadArea.classList.remove('processing');
+        }
+
+        function setLoadingState() {
+            const btnText = classifyBtn.querySelector('.btn-text');
+            const btnLoading = classifyBtn.querySelector('.btn-loading');
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-block';
+            classifyBtn.disabled = true;
+            uploadArea.classList.add('processing');
         }
 
         function formatFileSize(bytes) {
@@ -422,95 +463,73 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // Form submission
-        uploadForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            if (!selectedFile) {
+        // Single upload function with proper state management
+        async function performUpload() {
+            if (!uploadState.selectedFile) {
                 alert('Please select a file first.');
                 return;
             }
             
-            // Prevent double uploads - check and set processing state atomically
-            if (isProcessing) {
-                console.log('Already processing, ignoring duplicate submission');
+            // Check if already processing
+            if (uploadState.isProcessing) {
+                console.log('Upload already in progress, ignoring duplicate request');
                 return;
             }
-            isProcessing = true;
-            console.log('Starting document processing...');
-
-            // Show loading state
-            const btnText = classifyBtn.querySelector('.btn-text');
-            const btnLoading = classifyBtn.querySelector('.btn-loading');
-            btnText.style.display = 'none';
-            btnLoading.style.display = 'inline-block';
-            classifyBtn.disabled = true;
             
-            // Disable upload area during processing
-            uploadArea.classList.add('processing');
+            // Set processing state atomically
+            uploadState.setProcessing(true);
+            const currentUploadId = uploadState.uploadId;
+            
+            setLoadingState();
 
             try {
                 const formData = new FormData();
-                formData.append('file', selectedFile);
+                formData.append('file', uploadState.selectedFile);
 
-                console.log('Sending request to /upload...', selectedFile.name, selectedFile.size);
+                console.log(`[${currentUploadId}] Uploading file:`, uploadState.selectedFile.name);
                 
-                // Determine the base URL for API calls
-                const baseUrl = window.location.origin;
-                console.log('Base URL:', baseUrl);
-                
-                // Test health endpoint first
-                try {
-                    const healthResponse = await fetch(`${baseUrl}/health`);
-                    console.log('Health check:', healthResponse.status);
-                } catch (healthError) {
-                    console.error('Health check failed:', healthError);
-                }
-                
-                const response = await fetch(`${baseUrl}/upload`, {
+                const response = await fetch('/upload', {
                     method: 'POST',
-                    body: formData,
-                    mode: 'cors',
-                    credentials: 'same-origin'
+                    body: formData
                 });
 
-                console.log('Response received - Status:', response.status, 'Headers:', [...response.headers.entries()]);
+                // Check if this upload is still the current one
+                if (uploadState.uploadId !== currentUploadId) {
+                    console.log(`[${currentUploadId}] Upload superseded, ignoring response`);
+                    return;
+                }
+
+                console.log(`[${currentUploadId}] Response status:`, response.status);
                 
-                let result;
-                try {
-                    const text = await response.text();
-                    console.log('Raw response:', text);
-                    result = JSON.parse(text);
-                } catch (parseError) {
-                    console.error('JSON parse error:', parseError);
-                    throw new Error('Unable to parse server response');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
+                
+                const result = await response.json();
+                console.log(`[${currentUploadId}] Processing complete:`, result.label);
 
-                console.log('Parsed result:', result);
-
-                if (response.ok && result.success !== false) {
-                    displayResults(result);
-                } else {
-                    displayError(result.error || 'Server returned an error');
-                }
+                displayResults(result);
+                
             } catch (error) {
-                console.error('Complete error details:', error);
-                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-                    displayError('Connection failed. Please check if the server is running and try again.');
-                } else {
-                    displayError('Network error: ' + error.message);
+                // Only show error if this upload is still current
+                if (uploadState.uploadId === currentUploadId) {
+                    console.error(`[${currentUploadId}] Upload failed:`, error);
+                    displayError('Upload failed: ' + error.message);
                 }
             } finally {
-                // Reset button state and processing flag
-                btnText.style.display = 'inline-block';
-                btnLoading.style.display = 'none';
-                classifyBtn.disabled = false;
-                isProcessing = false;
-                
-                // Re-enable upload area
-                uploadArea.classList.remove('processing');
-                console.log('Processing complete, system ready for next upload');
+                // Only reset state if this upload is still current
+                if (uploadState.uploadId === currentUploadId) {
+                    uploadState.setProcessing(false);
+                    resetButtonState();
+                    console.log(`[${currentUploadId}] Upload process complete`);
+                }
             }
+        }
+
+        // Form submission handler
+        uploadForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            performUpload();
         });
 
         function displayResults(result) {
