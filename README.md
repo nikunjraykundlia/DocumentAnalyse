@@ -1,6 +1,6 @@
-## DocumentInsightHub: AI-Powered Document Classification
+## Document Analyser: AI-Powered Document Classification
 
-DocumentInsightHub is a powerful web application designed to automatically classify and validate various types of documents uploaded as images or PDFs. It leverages a sophisticated pipeline including Optical Character Recognition (OCR), direct text extraction, and a hybrid classification model to provide fast and accurate results.
+Document Analyser is a powerful web application designed to automatically classify and validate various types of documents uploaded as images or PDFs. It leverages a sophisticated pipeline including Optical Character Recognition (OCR), direct text extraction, and a hybrid classification model to provide fast and accurate results.
 
 ## ✨ Features
 
@@ -31,7 +31,7 @@ You need to have the following installed on your system:
 1.  **Clone the repository:**
     ```bash
     git clone <your-repository-url>
-    cd DocumentInsightHub
+    cd DocumentAnalyse
     ```
 
 2.  **Create a virtual environment:**
@@ -92,7 +92,7 @@ The application's behavior can be configured through the `.env` file and constan
 ## 🏗️ Project Structure
 
 ```
-.DocumentInsightHub/
+.DocumentAnalyse/
 ├── app.py              # Main Flask application, routes, and logic
 ├── classifier.py       # Document classification and validation logic
 ├── model_train.py      # Script to train the optional ML model
