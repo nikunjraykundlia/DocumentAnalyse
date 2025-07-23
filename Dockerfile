@@ -11,4 +11,4 @@ COPY . /app
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt || pip install --no-cache-dir flask pytesseract pillow pdfplumber pdf2image python-dotenv openai scikit-learn ollama
 
-CMD ["python", "main.py"]
+CMD ["python", "app.py"]
