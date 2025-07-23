@@ -1,0 +1,8 @@
+flask
+pytesseract
+Pillow
+pdfplumber
+python-dotenv
+PyMuPDF
+werkzeug
+openai

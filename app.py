@@ -1,12 +1,29 @@
 import os
 import logging
-from flask import Flask, request, jsonify, render_template, flash, redirect, url_for
+import base64
+from flask import Flask, request, jsonify, render_template, flash, redirect, url_for, session
 import pytesseract
 from PIL import Image
 import io
 import pdfplumber
-from pdf2image import convert_from_bytes
+import fitz  # PyMuPDF
 from dotenv import load_dotenv
+import threading
+
+# --- Global in-memory extracted text store ---
+extracted_text_store = {}
+store_lock = threading.Lock()
+
+def store_extracted_text(session_id, doc_id, text):
+    with store_lock:
+        if session_id not in extracted_text_store:
+            extracted_text_store[session_id] = {}
+        extracted_text_store[session_id][doc_id] = text
+
+def get_extracted_text(session_id, doc_id):
+    with store_lock:
+        return extracted_text_store.get(session_id, {}).get(doc_id)
+
 
 # Load environment variables before anything else
 load_dotenv()
@@ -56,6 +73,12 @@ def upload_document():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
         return '', 200
+    # Use Flask session for session_id (fallback to remote addr if not set)
+    session_id = session.get('session_id')
+    if not session_id:
+        import uuid
+        session_id = str(uuid.uuid4())
+        session['session_id'] = session_id
     
     try:
         # Debug logging
@@ -85,57 +108,66 @@ def upload_document():
                 'success': False
             }), 400
         
-        # Process the file with extraction
+        file_data = file.read()
+        file.seek(0) # Reset file pointer for any subsequent reads
+
+        # --- Image Preview Generation ---
+        image_preview_b64 = None
         try:
+            logging.info(f"Starting image preview generation for {file.filename}...")
             if file_extension == 'pdf':
-                # Process PDF file using pdfplumber (direct text extraction)
-                file_data = file.read()
-                logging.info("Processing PDF file with pdfplumber...")
-                
                 try:
-                    # Use pdfplumber for direct text extraction (no OCR needed)
-                    extracted_text = ""
-                    with pdfplumber.open(io.BytesIO(file_data)) as pdf:
-                        for page_num, page in enumerate(pdf.pages, 1):
-                            logging.info(f"Processing PDF page {page_num}")
-                            page_text = page.extract_text()
-                            if page_text:
-                                extracted_text += page_text + "\n"
-                    
-                    extracted_text = extracted_text.strip()
-                    
-                    if not extracted_text:
-                        return jsonify({
-                            'error': 'No text could be extracted from the PDF. The PDF may be image-based or corrupted.'
-                        }), 400
+                    pdf_document = fitz.open(stream=file_data, filetype="pdf")
+                    if pdf_document.page_count > 0:
+                        page = pdf_document.load_page(0)
+                        pix = page.get_pixmap()
+                        img_data = pix.tobytes("jpeg")
                         
-                except Exception as pdf_error:
-                    logging.error(f"PDF processing error: {str(pdf_error)}")
-                    return jsonify({
-                        'error': f'Error processing PDF: {str(pdf_error)}. Please ensure the PDF is not corrupted.'
-                    }), 400
-                    
-            else:
-                # Process image file
-                image = Image.open(io.BytesIO(file.read()))
-                
-                # Convert to RGB if necessary
+                        # Resize the image
+                        image = Image.open(io.BytesIO(img_data))
+                        image.thumbnail((300, 300))
+                        buffered = io.BytesIO()
+                        image.save(buffered, format="JPEG")
+                        image_preview_b64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                        logging.info("PDF preview image generated successfully with PyMuPDF.")
+                except Exception as pdf_exc:
+                    logging.error(f"PDF preview generation failed for {file.filename}: {str(pdf_exc)}", exc_info=True)
+            else:  # For image files
+                image = Image.open(io.BytesIO(file_data))
                 if image.mode != 'RGB':
                     image = image.convert('RGB')
-                
-                # Extract text using OCR
+                image.thumbnail((300, 300))
+                buffered = io.BytesIO()
+                image.save(buffered, format="JPEG")
+                image_preview_b64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                logging.info("Image preview generated successfully for image file.")
+        except Exception as img_exc:
+            logging.error(f"Overall image preview generation failed for {file.filename}: {str(img_exc)}", exc_info=True)
+
+        # --- Text Extraction ---
+        try:
+            if file_extension == 'pdf':
+                extracted_text = ""
+                with pdfplumber.open(io.BytesIO(file_data)) as pdf:
+                    for page_num, page in enumerate(pdf.pages, 1):
+                        page_text = page.extract_text()
+                        if page_text:
+                            extracted_text += page_text + "\n"
+                extracted_text = extracted_text.strip()
+                if not extracted_text:
+                    logging.warning("pdfplumber found no text, PDF might be image-based.")
+            else:
+                image = Image.open(io.BytesIO(file_data))
+                if image.mode != 'RGB':
+                    image = image.convert('RGB')
                 extracted_text = pytesseract.image_to_string(image, config='--psm 6 --oem 3')
-                
-                if not extracted_text.strip():
-                    return jsonify({
-                        'error': 'No text could be extracted from the image. Please ensure the image contains readable text.'
-                    }), 400
-                
+
+            if not extracted_text.strip():
+                logging.warning("No text could be extracted from the document.")
+
         except Exception as e:
-            logging.error(f"OCR processing error: {str(e)}")
-            return jsonify({
-                'error': f'Error processing image: {str(e)}'
-            }), 500
+            logging.error(f"Text extraction error: {str(e)}")
+            return jsonify({'error': f'Error extracting text: {str(e)}'}), 500
         
         # Classify the document
         try:
@@ -158,15 +190,21 @@ def upload_document():
             validation_errors = ['Error during validation process']
         
         # Prepare response
+        # Use filename as doc_id (could be improved for uniqueness)
+        doc_id = file.filename
+        store_extracted_text(session_id, doc_id, extracted_text)
         response_data = {
             'text': extracted_text,
             'label': classification_label,
             'confidence': confidence_score,
             'validation_errors': validation_errors,
-            'success': True
+            'image_preview': image_preview_b64,
+            'success': True,
+            'doc_id': doc_id
         }
         
         logging.info(f"Document processed successfully: {classification_label}")
+
         return jsonify(response_data)
         
     except Exception as e:
@@ -195,17 +233,27 @@ def internal_error(e):
 @app.route('/chat', methods=['POST'])
 def chat():
     """
-    Handle chatbot questions about a document.
+    Handle chatbot questions about all uploaded documents for the session.
     """
+    import re
     data = request.get_json()
-    if not data or 'question' not in data or 'context' not in data:
-        return jsonify({'error': 'Invalid request. Missing question or context.'}), 400
+    if not data or 'question' not in data:
+        return jsonify({'error': 'Invalid request. Missing question.'}), 400
 
     question = data['question']
-    context = data['context']
-
+    session_id = session.get('session_id')
+    if not session_id:
+        return jsonify({'error': 'Session not found.'}), 400
+    # Aggregate all extracted texts for this session
+    with store_lock:
+        context = "\n\n".join(extracted_text_store.get(session_id, {}).values())
+    if not context:
+        return jsonify({'error': 'No documents found for this session.'}), 404
     try:
         answer = classifier.answer_question(question, context)
+        # Improved cleanup: remove any mix of leading/trailing * or ** before a colon in headings
+        answer = re.sub(r'[\*]+([A-Za-z0-9 ,\-/]+):[\*]+', r'\1:', answer)
+        answer = re.sub(r'^[\*]+([A-Za-z0-9 ,\-/]+):[\*]*', r'\1:', answer, flags=re.MULTILINE)
         return jsonify({'answer': answer})
     except Exception as e:
         logging.error(f"Chat endpoint error: {str(e)}")

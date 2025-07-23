@@ -265,7 +265,7 @@ class DocumentClassifier:
 
         try:
             response = self.ollama_client.chat(
-                model='llama3',  # You can change this to your preferred model
+                model='llama3',
                 messages=[{'role': 'user', 'content': prompt}],
                 options={'temperature': 0.0}
             )
@@ -393,17 +393,23 @@ class DocumentClassifier:
         prompt = f"""
         You are 'Document Chat', a professional AI assistant for analyzing documents.
         Your task is to answer questions based *only* on the provided document text.
-        - Be direct and concise.
-        - Do not use conversational phrases like 'Based on the text...' or 'The answer is...'.
-        - If the answer isn't in the text, state: 'The answer could not be found in the provided document(s).'
-        - Do not use any external knowledge.
 
-        Context:
+        **Formatting Rules:**
+        - Below each heading, provide a brief, one-sentence summary of the document's purpose.
+        - After the summary, use a bulleted list to highlight 2-3 key pieces of information on new line each (e.g., names, dates, amounts).
+
+        **General Rules:**
+        - Be direct and concise. Do not use conversational introductions.
+        - If the answer cannot be found in the text, state: 'The answer could not be found in the provided document(s).'
+        - Base your answers strictly on the provided text and do not use external knowledge.
+
+        **Document Text:**
         ---
         {context}
         ---
-        Question: {question}
-        Answer:"""
+        **Question:** {question}
+        **Answer:**
+        """
 
         try:
             response = self.ollama_client.chat(
