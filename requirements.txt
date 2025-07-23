@@ -6,3 +6,5 @@ python-dotenv
 PyMuPDF
 werkzeug
 openai
+opencv-python
+numpy

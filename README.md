@@ -56,7 +56,11 @@ You need to have the following installed on your system:
     OPENAI_API_KEY="your-openai-api-key"
     ```
     
-    Ollama runs locally and does not require an API key by default.
+## ⚠️ Note on Cloud Deployments (Render, etc.)
+
+- **Ollama/Llama-based AI classification is only available on local machines or servers where you can install and run Ollama.**
+- **On Render or other cloud platforms, only OpenAI (if configured) or rule-based classification will be available.**
+- If you require Llama/Ollama, run the app on your own machine or a compatible server.
 
 ## 🚀 Usage
 

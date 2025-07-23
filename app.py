@@ -54,6 +54,16 @@ def after_request(response):
 # Initialize the document classifier
 classifier = DocumentClassifier(use_ai=True, use_ollama=True)
 
+# Log AI engine status
+ollama_status = getattr(classifier, 'use_ollama', False)
+openai_status = getattr(classifier, 'use_ai', False)
+if ollama_status:
+    logging.info("Ollama/Llama AI classification ENABLED.")
+elif openai_status:
+    logging.info("OpenAI AI classification ENABLED.")
+else:
+    logging.info("Only rule-based classification is available. No AI engine enabled.")
+
 
 @app.route('/')
 def index():
@@ -147,66 +157,95 @@ def upload_document():
         # --- Text Extraction ---
         try:
             if file_extension == 'pdf':
-                extracted_text = ""
-                with pdfplumber.open(io.BytesIO(file_data)) as pdf:
-                    for page_num, page in enumerate(pdf.pages, 1):
-                        page_text = page.extract_text()
-                        if page_text:
-                            extracted_text += page_text + "\n"
-                extracted_text = extracted_text.strip()
-                if not extracted_text:
-                    logging.warning("pdfplumber found no text, PDF might be image-based.")
+                pdf_bytes = file_data
             else:
+                # Convert image to PDF in memory
                 image = Image.open(io.BytesIO(file_data))
                 if image.mode != 'RGB':
                     image = image.convert('RGB')
-                extracted_text = pytesseract.image_to_string(image, config='--psm 6 --oem 3')
+                pdf_buffer = io.BytesIO()
+                image.save(pdf_buffer, format="PDF")
+                pdf_bytes = pdf_buffer.getvalue()
+            # Now always use PDF OCR pipeline
+            extracted_text = ""
+            with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                for page_num, page in enumerate(pdf.pages, 1):
+                    page_text = page.extract_text()
+                    if page_text:
+                        extracted_text += page_text + "\n"
+            extracted_text = extracted_text.strip()
+            if not extracted_text:
+                logging.warning("pdfplumber found no text, PDF might be image-based.")
+                # Fallback: Tesseract on PDF (PyMuPDF rasterize)
+                try:
+                    pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+                    for page in pdf_document:
+                        pix = page.get_pixmap()
+                        img_data = pix.tobytes("jpeg")
+                        img = Image.open(io.BytesIO(img_data))
+                        text = pytesseract.image_to_string(img, lang='eng+hin+guj', config='--oem 3 --psm 6')
+                        if text and text.strip():
+                            extracted_text += text + "\n"
+                    extracted_text = extracted_text.strip()
+                except Exception as tesseract_pdf_exc:
+                    logging.warning(f"Tesseract PDF fallback failed: {tesseract_pdf_exc}")
+            # OCR confidence/length check
+            if not extracted_text or len(extracted_text.strip()) < 30:
+                logging.warning("OCR output is too short or empty. Likely low-quality or noisy image.")
+                extracted_text = "[WARNING] OCR failed: Image quality too low for reliable extraction. Please upload a clearer scan or photo."
 
             if not extracted_text.strip():
                 logging.warning("No text could be extracted from the document.")
 
         except Exception as e:
             logging.error(f"Text extraction error: {str(e)}")
-            return jsonify({'error': f'Error extracting text: {str(e)}'}), 500
+            return jsonify({
+                'label': 'Error',
+                'confidence': 0,
+                'text': '[ERROR] Failed to extract text. Please check the file format and try again.'
+            }), 200
         
-        # Classify the document
+        # Classify the document with language support
         try:
-            classification_label = classifier.classify(extracted_text)
-            confidence_score = classifier.get_confidence_score(extracted_text, classification_label)
+            # Detect language (basic unicode-based, can be replaced with langdetect if needed)
+            def detect_language(text):
+                guj_count = sum(0x0A80 <= ord(c) <= 0x0AFF for c in text)
+                hin_count = sum(0x0900 <= ord(c) <= 0x097F for c in text)
+                total = len(text)
+                if total == 0:
+                    return 'en'
+                if guj_count / total > 0.3:
+                    return 'guj'
+                if hin_count / total > 0.3:
+                    return 'hin'
+                return 'en'
 
-            # If confidence is below 50%, classify as 'Unidentified Document'
-            if confidence_score < 0.5:
+            lang_hint = detect_language(extracted_text)
+            # Prepend language hint for Llama/Ollama
+            prompt_context = extracted_text
+            if lang_hint == 'guj':
+                prompt_context = '[The following document is in Gujarati.]\n' + extracted_text
+            elif lang_hint == 'hin':
+                prompt_context = '[The following document is in Hindi.]\n' + extracted_text
+            classification_label = classifier.classify(prompt_context)
+            confidence_score = classifier.get_confidence_score(prompt_context, classification_label)
+            # Only use 'Unidentified Document' if no label could be determined at all
+            if not classification_label or classification_label.strip().lower() in ["", "unknown", "none"]:
                 classification_label = 'Unidentified Document'
         except Exception as e:
             logging.error(f"Classification error: {str(e)}")
             classification_label = 'Unknown'
             confidence_score = 0.0
         
-        # Validate the document based on its classification
-        try:
-            validation_errors = classifier.validate(classification_label, extracted_text)
-        except Exception as e:
-            logging.error(f"Validation error: {str(e)}")
-            validation_errors = ['Error during validation process']
-        
-        # Prepare response
-        # Use filename as doc_id (could be improved for uniqueness)
-        doc_id = file.filename
-        store_extracted_text(session_id, doc_id, extracted_text)
-        response_data = {
-            'text': extracted_text,
+        # Return results
+        return jsonify({
             'label': classification_label,
             'confidence': confidence_score,
-            'validation_errors': validation_errors,
+            'text': extracted_text,
             'image_preview': image_preview_b64,
-            'success': True,
-            'doc_id': doc_id
-        }
-        
-        logging.info(f"Document processed successfully: {classification_label}")
+            'success': True
+        })
 
-        return jsonify(response_data)
-        
     except Exception as e:
         logging.error(f"Unexpected error in upload_document: {str(e)}")
         return jsonify({
