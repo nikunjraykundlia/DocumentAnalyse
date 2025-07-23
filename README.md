@@ -1,4 +1,4 @@
-## Document Analyser: AI-Powered Document Classification
+## 📃 Document Analyser: AI-Powered Document Classification
 
 Document Analyser is a powerful web application designed to automatically classify and validate various types of documents uploaded as images or PDFs. It leverages a sophisticated pipeline including Optical Character Recognition (OCR), direct text extraction, and a hybrid classification model to provide fast and accurate results.
 
