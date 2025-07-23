@@ -19,6 +19,7 @@ def store_extracted_text(session_id, doc_id, text):
         if session_id not in extracted_text_store:
             extracted_text_store[session_id] = {}
         extracted_text_store[session_id][doc_id] = text
+        logging.info(f"[store_extracted_text] Stored extracted text for session={session_id}, doc_id={doc_id}, text_len={len(text) if text else 0}")
 
 def get_extracted_text(session_id, doc_id):
     with store_lock:
@@ -51,7 +52,137 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
+from concurrent.futures import ThreadPoolExecutor
 
+@app.route('/batch-upload', methods=['POST', 'OPTIONS'])
+def batch_upload():
+    """
+    Handle batch document upload, OCR processing, classification, and validation in parallel.
+    """
+    if request.method == 'OPTIONS':
+        return '', 200
+    session_id = session.get('session_id')
+    if not session_id:
+        import uuid
+        session_id = str(uuid.uuid4())
+        session['session_id'] = session_id
+
+    files = request.files.getlist('file')
+    if not files:
+        return jsonify({'error': 'No files uploaded', 'success': False}), 400
+
+    def process_single_file(file):
+        try:
+            # (Copy logic from upload_document, lines 113-261, but operate on the passed file)
+            file_extension = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'pdf'}
+            if file_extension not in allowed_extensions:
+                return {'error': f'Unsupported file type: {file.filename}', 'success': False}
+            file_data = file.read()
+            file.seek(0)
+            # Preview generation (same as before)
+            image_preview_b64 = None
+            try:
+                if file_extension == 'pdf':
+                    pdf_document = fitz.open(stream=file_data, filetype="pdf")
+                    if pdf_document.page_count > 0:
+                        page = pdf_document.load_page(0)
+                        pix = page.get_pixmap()
+                        img_data = pix.tobytes("jpeg")
+                        image = Image.open(io.BytesIO(img_data))
+                        image.thumbnail((300, 300))
+                        buffered = io.BytesIO()
+                        image.save(buffered, format="JPEG")
+                        image_preview_b64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                else:
+                    image = Image.open(io.BytesIO(file_data))
+                    if image.mode != 'RGB':
+                        image = image.convert('RGB')
+                    image.thumbnail((300, 300))
+                    buffered = io.BytesIO()
+                    image.save(buffered, format="JPEG")
+                    image_preview_b64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            except Exception:
+                pass
+            # Text extraction (same as before)
+            try:
+                if file_extension == 'pdf':
+                    pdf_bytes = file_data
+                else:
+                    image = Image.open(io.BytesIO(file_data))
+                    if image.mode != 'RGB':
+                        image = image.convert('RGB')
+                    pdf_buffer = io.BytesIO()
+                    image.save(pdf_buffer, format="PDF")
+                    pdf_bytes = pdf_buffer.getvalue()
+                extracted_text = ""
+                with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                    for page in pdf.pages:
+                        page_text = page.extract_text()
+                        if page_text:
+                            extracted_text += page_text + "\n"
+                extracted_text = extracted_text.strip()
+                if not extracted_text:
+                    try:
+                        pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+                        for page in pdf_document:
+                            pix = page.get_pixmap()
+                            img_data = pix.tobytes("jpeg")
+                            img = Image.open(io.BytesIO(img_data))
+                            text = pytesseract.image_to_string(img, lang='eng+hin+guj', config='--oem 3 --psm 6')
+                            if text and text.strip():
+                                extracted_text += text + "\n"
+                        extracted_text = extracted_text.strip()
+                    except Exception:
+                        pass
+                if not extracted_text or len(extracted_text.strip()) < 30:
+                    extracted_text = "[WARNING] OCR failed: Image quality too low for reliable extraction. Please upload a clearer scan or photo."
+                if not extracted_text.strip():
+                    extracted_text = "[ERROR] No text could be extracted from the document."
+                doc_id = file.filename
+                store_extracted_text(session_id, doc_id, extracted_text)
+            except Exception:
+                extracted_text = "[ERROR] Failed to extract text. Please check the file format and try again."
+            # Classification (same as before)
+            try:
+                def detect_language(text):
+                    guj_count = sum(0x0A80 <= ord(c) <= 0x0AFF for c in text)
+                    hin_count = sum(0x0900 <= ord(c) <= 0x097F for c in text)
+                    total = len(text)
+                    if total == 0:
+                        return 'en'
+                    if guj_count / total > 0.3:
+                        return 'guj'
+                    if hin_count / total > 0.3:
+                        return 'hin'
+                    return 'en'
+                lang_hint = detect_language(extracted_text)
+                prompt_context = extracted_text
+                if lang_hint == 'guj':
+                    prompt_context = '[The following document is in Gujarati.]\n' + extracted_text
+                elif lang_hint == 'hin':
+                    prompt_context = '[The following document is in Hindi.]\n' + extracted_text
+                classification_label = classifier.classify(prompt_context)
+                confidence_score = classifier.get_confidence_score(prompt_context, classification_label)
+                if not classification_label or classification_label.strip().lower() in ["", "unknown", "none"]:
+                    classification_label = 'Unidentified Document'
+            except Exception:
+                classification_label = 'Unknown'
+                confidence_score = 0.0
+            return {
+                'label': classification_label,
+                'confidence': confidence_score,
+                'text': extracted_text,
+                'image_preview': image_preview_b64,
+                'filename': file.filename,
+                'success': True
+            }
+        except Exception as e:
+            return {'error': f'Failed to process {file.filename}: {str(e)}', 'success': False}
+
+    with ThreadPoolExecutor() as executor:
+        results = list(executor.map(process_single_file, files))
+    return jsonify({'results': results, 'success': True})
 # Initialize classifier and chatbot
 classifier = DocumentClassifier(
     use_ai=bool(openai_api_key),
@@ -63,17 +194,6 @@ if OLLAMA_AVAILABLE:
     chatbot = Chatbot(ollama_client=ollama)
 else:
     logging.warning("Ollama/Llama AI services DISABLED.")
-
-# Log AI engine status
-ollama_status = getattr(classifier, 'use_ollama', False)
-openai_status = getattr(classifier, 'use_ai', False)
-if ollama_status:
-    logging.info("Ollama/Llama AI classification ENABLED.")
-elif openai_status:
-    logging.info("OpenAI AI classification ENABLED.")
-else:
-    logging.info("Only rule-based classification is available. No AI engine enabled.")
-
 
 @app.route('/')
 def index():
@@ -295,17 +415,19 @@ def chat():
 
     question = data['question']
     session_id = session.get('session_id')
+    logging.info(f"[/chat] session_id={session_id}")
     if not session_id:
         return jsonify({'error': 'Session not found.'}), 400
     # Aggregate all extracted texts for this session
     with store_lock:
-        context = "\n\n".join(extracted_text_store.get(session_id, {}).values())
+        context_dict = extracted_text_store.get(session_id, {})
+        context = "\n\n".join(context_dict.values())
+    logging.info(f"[/chat] context length={len(context)}, num_docs={len(context_dict)}")
     if not context:
-        return jsonify({'error': 'No documents found for this session.'}), 404
+        return jsonify({'error': 'No extracted document text found for this session. Please upload and process documents before using the chatbot.'}), 404
     try:
         if not chatbot:
             return jsonify({'error': 'Chatbot is not available.'}), 503
-        
         answer = chatbot.answer_question(question, context)
         # Improved cleanup: remove any mix of leading/trailing * or ** before a colon in headings
         answer = re.sub(r'[\*]+([A-Za-z0-9 ,\-/]+):[\*]+', r'\1:', answer)
@@ -325,6 +447,7 @@ def handle_exception(e):
     logging.error("Exception occurred", exc_info=True)
     return jsonify({"error": "Internal server error"}), 500
 
+if __name__ == '__main__':
     # Use the PORT environment variable if available, otherwise default to 5000
     port = int(os.environ.get('PORT', 5000))
     # Run the app, listening on all interfaces and with debug mode enabled
