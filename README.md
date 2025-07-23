@@ -1,27 +1,29 @@
-## 📃 Document Analyser: AI-Powered Document Classification
+## 📃 Document Analyse: AI-Powered Document Classification
 
-Document Analyser is a powerful web application designed to automatically classify and validate various types of documents uploaded as images or PDFs. The system now prioritizes **Llama-based AI classification via Ollama** as its primary engine, with OpenAI (GPT-4o) as an alternative and a robust rule-based fallback for unmatched cases. The pipeline includes Optical Character Recognition (OCR), direct text extraction, and multi-layered classification for fast and accurate results.
+Document Analyse is a powerful web application that automatically classifies, validates, and enables Q&A on a wide range of uploaded documents (PDFs, images, scans). It prioritizes **Llama-based AI classification via Ollama** for privacy-friendly, local inference, with OpenAI (GPT-4o) as an optional cloud fallback, and robust rule-based logic for unmatched cases. The system features advanced OCR, multi-format support, confidence scoring, and a context-aware chatbot for interactive document insights.
 
 ## ✨ Features
 
 - **Llama (Ollama) AI Classification [Primary]**: Utilizes local Llama models (via Ollama) for advanced, privacy-friendly document classification. No internet required for AI processing.
 - **OpenAI GPT-4o Integration [Optional]**: Optionally leverages OpenAI's GPT-4o for cloud-based AI classification if enabled and API key is provided.
-- **Rule-Based Fallback**: A robust keyword-matching engine for documents that can't be classified by AI models.
+- **Rule-Based Fallback**: Robust keyword-matching and field validation for documents not handled by AI models.
 - **Multi-Format Upload**: Supports PDF, PNG, JPG, JPEG, GIF, BMP, TIFF, and more.
-- **Advanced Text Extraction**: Uses `pdfplumber` for text-based PDFs and `Tesseract` OCR for images or scanned documents.
-- **Confidence Scoring**: Provides a confidence score for each classification, helping to identify and flag uncertain results.
-- **Document Validation**: Checks for required fields based on the classified document type.
-- **Optional ML Model**: Includes a script (`model_train.py`) to train a custom `scikit-learn` model on your own data.
-- **User-Friendly Interface**: Clean, modern UI for easy uploading and viewing of results.
+- **Advanced Text Extraction**: Uses `pdfplumber` for text-based PDFs, `Tesseract` OCR for images/scans, and PyMuPDF for PDF parsing.
+- **Confidence Scoring**: Returns a confidence score for each classification to help flag uncertain results.
+- **Document Validation**: Checks for required fields based on classified document type; highlights missing or invalid fields.
+- **Custom ML Model Support**: Includes a script (`model_train.py`) to train a custom `scikit-learn` model on your own data.
+- **Interactive Chatbot**: Built-in chatbot (Ollama-powered) answers questions about the extracted content of all uploaded documents in your session, strictly using only the visible document context.
+- **Multi-File Upload & Processing**: Upload and process multiple documents in a single session; extracted text and results are session-scoped.
+- **User-Friendly Interface**: Clean, modern UI for easy uploading, result viewing, and chatbot access (toggle appears after extraction).
+- **Session-Based Context**: Keeps extracted text and chatbot context per user session for privacy and continuity.
+- **Error Handling**: Handles large files, unsupported formats, and server errors gracefully with clear feedback.
+- **CORS Support**: Configured for cross-origin requests, suitable for deployment as a web service.
 
 ## 🛠️ Getting Started
 
-Follow these instructions to set up and run the project on your local machine.
+Follow these instructions to set up and run Document Analyse locally.
 
 ### Prerequisites
-
-You need to have the following installed on your system:
-
 - **Python 3.8+**
 - **Tesseract OCR Engine**: [Installation Guide](https://tesseract-ocr.github.io/tessdoc/Installation.html)
 - **Poppler**: PDF rendering for Windows: [Installation for Windows](https://github.com/oschwartz10612/poppler-windows/releases/)
@@ -30,34 +32,74 @@ You need to have the following installed on your system:
 
 ### Installation
 
-1.  **Clone the repository:**
+1. **Clone the repository:**
     ```bash
     git clone <your-repository-url>
     cd DocumentAnalyse
     ```
-
-2.  **Create a virtual environment:**
+2. **Create a virtual environment:**
     ```bash
     python -m venv venv
-    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+    source venv/bin/activate  # On Windows, use venv\Scripts\activate
     ```
-
-3.  **Install Python dependencies:**
+3. **Install Python dependencies:**
     ```bash
-    pip install flask pytesseract pillow pdfplumber pdf2image python-dotenv openai scikit-learn ollama
+    pip install -r requirements.txt
     ```
-
-4.  **Configure environment variables:**
+4. **Configure environment variables:**
     Create a `.env` file in the root directory and add:
-
     ```env
     SESSION_SECRET="your-strong-secret-key"
     # (Optional) OpenAI API Key for cloud AI
     OPENAI_API_KEY="your-openai-api-key"
     ```
-    
-## ⚠️ Note on Cloud Deployments (Render, etc.)
 
+## ⚠️ Note on Cloud Deployments (Render, etc.)
+- Ensure all environment variables are set in the Render dashboard.
+- Set the start command to `gunicorn app:app` or `python app.py`.
+- For Ollama, you must run the Ollama server on the same host (not available on most free cloud platforms).
+- For OpenAI, provide your API key if you want to enable cloud classification.
+- The app is CORS-enabled for web deployment.
+
+## 🚀 Usage
+
+1. **Start the application:**
+    ```bash
+    python app.py
+    ```
+    or
+    ```bash
+    gunicorn app:app
+    ```
+2. **Use the web interface:**
+    - Open your browser and navigate to `http://127.0.0.1:5000`.
+    - Upload one or more documents using the file input field.
+    - The application will process each document, display extracted text, classification label, confidence score, and any validation errors.
+    - Once extraction is complete, the chatbot icon appears (bottom right). Click it to ask questions about the uploaded documents.
+
+## 📚 Supported Document Types (Examples)
+- Electricity Bill
+- Property Tax Bill
+- Birth Certificate
+- Mobile Phone Bill
+- (Easily extensible via `models.py`)
+
+## 🤖 Chatbot Q&A
+- The chatbot answers questions strictly based on the extracted content of your uploaded documents, using Ollama (Llama 3) for local inference.
+- If Ollama is unavailable, chat functionality is disabled.
+- The chatbot does not use external knowledge and will state if the answer is not found in your documents.
+
+## 🧩 Extending & Customizing
+- Add new document types or validation rules in `models.py`.
+- Train a custom ML model using `model_train.py` and integrate it in `classifier.py`.
+- Adjust UI/UX in the frontend files (if present).
+
+## 📝 License
+MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+For questions or contributions, please open an issue or pull request!
 - **Ollama/Llama-based AI classification is only available on local machines or servers where you can install and run Ollama.**
 - **On Render or other cloud platforms, only OpenAI (if configured) or rule-based classification will be available.**
 - If you require Llama/Ollama, run the app on your own machine or a compatible server.
