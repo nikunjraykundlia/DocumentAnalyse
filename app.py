@@ -53,7 +53,10 @@ def after_request(response):
     return response
 
 # Initialize classifier and chatbot
-classifier = DocumentClassifier(use_ai=False, use_ollama=True)
+classifier = DocumentClassifier(
+    use_ai=bool(openai_api_key),
+    use_ollama=OLLAMA_AVAILABLE
+)
 chatbot = None
 if OLLAMA_AVAILABLE:
     logging.info("Ollama/Llama AI services ENABLED.")
