@@ -29,7 +29,7 @@ except ImportError:
 
 class DocumentClassifier:
     """
-    Document classifier that uses rule-based logic and optional AI enhancement.
+    Document classifier that uses rule-based logic, local ML, and optional AI enhancement.
     """
     
     def __init__(self, use_ai: bool = True, use_ollama: bool = True):
@@ -150,22 +150,21 @@ class DocumentClassifier:
         """
         if not text or not text.strip():
             return 'Unknown'
-        
-        # First try rule-based classification
-        rule_based_result = self._rule_based_classify(text)
-        
-        # If classification is uncertain, try Ollama for a private, local classification
-        if self.use_ollama and rule_based_result == 'Unknown':
+        # 1. Try Ollama Llama model first
+        if self.use_ollama:
             try:
                 ollama_result = self._ollama_classify(text)
-                if ollama_result and ollama_result != 'Unknown':
-                    logging.info(f"Ollama classification used: {ollama_result}")
+                if ollama_result and ollama_result != 'Unidentified Document':
+                    logging.info(f"Ollama/Llama classification used: {ollama_result}")
                     return ollama_result
             except Exception as e:
                 logging.error(f"Ollama classification failed: {str(e)}")
-
-        # If classification is still uncertain, use OpenAI as a final fallback
-        if self.use_ai and rule_based_result == 'Unknown':
+        # 2. Rule-based classification as fallback
+        rule_based_result = self._rule_based_classify(text)
+        if rule_based_result and rule_based_result != 'Unknown':
+            return rule_based_result
+        # 3. Try OpenAI as last fallback
+        if self.use_ai:
             try:
                 ai_result = self._ai_classify(text)
                 if ai_result and ai_result != 'Unknown':
@@ -173,8 +172,7 @@ class DocumentClassifier:
                     return ai_result
             except Exception as e:
                 logging.error(f"OpenAI classification failed: {str(e)}")
-        
-        return rule_based_result
+        return 'Unknown'
 
     def _rule_based_classify(self, text: str) -> str:
         """
@@ -248,20 +246,21 @@ class DocumentClassifier:
 
     def _ollama_classify(self, text: str) -> str:
         """
-        Classify a document using a local Ollama model.
+        Classify a document using a local Ollama (Llama) model with a rich, explicit prompt for maximum accuracy.
         """
         if not self.ollama_client:
             return 'Unidentified Document'
 
+        # Build a detailed prompt with all document types, keywords, and required fields
+        from models import DOCUMENT_TYPES
+        doc_type_descriptions = []
+        for key, doc_type in DOCUMENT_TYPES.items():
+            desc = f"- {doc_type.name}:\n    Keywords: {', '.join(doc_type.keywords)}\n    Required fields: {', '.join(doc_type.required_fields)}"
+            doc_type_descriptions.append(desc)
+        doc_types_block = '\n'.join(doc_type_descriptions)
+        category_names = [dt.name for dt in DOCUMENT_TYPES.values()]
         prompt = f"""
-        You are an expert document classifier. Your task is to classify the given text into one of the following categories: {', '.join(DOCUMENT_TYPES)}.
-        Respond with only the category name. If you cannot confidently classify the document, respond with 'Unidentified Document'.
-
-        Document Text:
-        ---
-        {text[:4000]}  # Truncate to avoid excessive length
-        ---
-        Category:"""
+You are an expert document classifier. Your job is to classify the given text into one of the following document types.\n\nDocument Types:\n{doc_types_block}\n\nInstructions:\n- Carefully read the extracted text.\n- Think step by step.\n- Choose the single best matching document type from the list above.\n- Only return the exact document type name.\n- If none of the types fit at all, return 'Unidentified Document'.\n\nExtracted Text:\n---\n{text[:4000]}\n---\n\nRespond ONLY with one of these category names: {', '.join(category_names)} or 'Unidentified Document'.\nCategory:"""
 
         try:
             response = self.ollama_client.chat(
@@ -271,7 +270,7 @@ class DocumentClassifier:
             )
             classification = response['message']['content'].strip()
 
-            if classification in DOCUMENT_TYPES:
+            if classification in category_names:
                 return classification
             else:
                 logging.warning(f"Ollama returned an unexpected classification: '{classification}'")
@@ -279,6 +278,7 @@ class DocumentClassifier:
         except Exception as e:
             logging.error(f"Ollama API call failed: {e}")
             return 'Unidentified Document'
+
 
     def _ai_classify(self, text: str) -> str:
         """
