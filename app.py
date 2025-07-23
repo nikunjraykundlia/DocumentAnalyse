@@ -29,7 +29,8 @@ def get_extracted_text(session_id, doc_id):
 load_dotenv()
 openai_api_key = os.getenv('OPENAI_API_KEY')
 
-from classifier import DocumentClassifier
+from classifier import DocumentClassifier, OLLAMA_AVAILABLE, ollama
+from chatbot import Chatbot
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Configure logging
@@ -51,8 +52,14 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
 
-# Initialize the document classifier
-classifier = DocumentClassifier(use_ai=True, use_ollama=True)
+# Initialize classifier and chatbot
+classifier = DocumentClassifier(use_ai=False, use_ollama=True)
+chatbot = None
+if OLLAMA_AVAILABLE:
+    logging.info("Ollama/Llama AI services ENABLED.")
+    chatbot = Chatbot(ollama_client=ollama)
+else:
+    logging.warning("Ollama/Llama AI services DISABLED.")
 
 # Log AI engine status
 ollama_status = getattr(classifier, 'use_ollama', False)
@@ -197,6 +204,10 @@ def upload_document():
             if not extracted_text.strip():
                 logging.warning("No text could be extracted from the document.")
 
+            # Store the extracted text in our session-based store
+            doc_id = file.filename  # Using filename as a simple doc_id
+            store_extracted_text(session_id, doc_id, extracted_text)
+
         except Exception as e:
             logging.error(f"Text extraction error: {str(e)}")
             return jsonify({
@@ -289,11 +300,24 @@ def chat():
     if not context:
         return jsonify({'error': 'No documents found for this session.'}), 404
     try:
-        answer = classifier.answer_question(question, context)
+        if not chatbot:
+            return jsonify({'error': 'Chatbot is not available.'}), 503
+        
+        answer = chatbot.answer_question(question, context)
         # Improved cleanup: remove any mix of leading/trailing * or ** before a colon in headings
         answer = re.sub(r'[\*]+([A-Za-z0-9 ,\-/]+):[\*]+', r'\1:', answer)
         answer = re.sub(r'^[\*]+([A-Za-z0-9 ,\-/]+):[\*]*', r'\1:', answer, flags=re.MULTILINE)
         return jsonify({'answer': answer})
     except Exception as e:
-        logging.error(f"Chat endpoint error: {str(e)}")
-        return jsonify({'error': 'An error occurred while getting the answer.'}), 500
+        import traceback
+        error_details = traceback.format_exc()
+        logging.error(f"Chat endpoint error: {str(e)}\n{error_details}")
+        # Optionally, include error details in the response for debugging (remove in production)
+        return jsonify({'error': f'An error occurred while getting the answer: {str(e)}', 'details': error_details}), 500
+
+if __name__ == '__main__':
+    # Use the PORT environment variable if available, otherwise default to 5000
+    port = int(os.environ.get('PORT', 5000))
+    # Run the app, listening on all interfaces and with debug mode enabled
+    app.run(host='0.0.0.0', port=port, debug=True)
+

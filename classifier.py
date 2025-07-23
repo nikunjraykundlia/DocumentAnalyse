@@ -383,45 +383,6 @@ You are an expert document classifier. Your job is to classify the given text in
         
         return round(confidence, 2)
 
-    def answer_question(self, question: str, context: str) -> str:
-        """
-        Answer a user's question based on the document's context using Ollama.
-        """
-        if not self.use_ollama or not self.ollama_client:
-            return "I can't answer questions right now as the chat functionality is not enabled."
-
-        prompt = f"""
-        You are 'Document Chat', a professional AI assistant for analyzing documents.
-        Your task is to answer questions based *only* on the provided document text.
-
-        **Formatting Rules:**
-        - Below each heading, provide a brief, one-sentence summary of the document's purpose.
-        - After the summary, use a bulleted list to highlight 2-3 key pieces of information on new line each (e.g., names, dates, amounts).
-
-        **General Rules:**
-        - Be direct and concise. Do not use conversational introductions.
-        - If the answer cannot be found in the text, state: 'The answer could not be found in the provided document(s).'
-        - Base your answers strictly on the provided text and do not use external knowledge.
-
-        **Document Text:**
-        ---
-        {context}
-        ---
-        **Question:** {question}
-        **Answer:**
-        """
-
-        try:
-            response = self.ollama_client.chat(
-                model='llama3',
-                messages=[{'role': 'user', 'content': prompt}],
-                options={'temperature': 0.1}
-            )
-            answer = response['message']['content'].strip()
-            return answer
-        except Exception as e:
-            logging.error(f"Ollama Q&A failed: {e}")
-            return "I'm sorry, but I encountered an error while trying to answer your question."
 
     def validate(self, classification: str, text: str) -> List[str]:
         """
