@@ -317,8 +317,14 @@ def chat():
         logging.error(f"Chat endpoint error: {str(e)}\n{error_details}")
         # Optionally, include error details in the response for debugging (remove in production)
         return jsonify({'error': f'An error occurred while getting the answer: {str(e)}', 'details': error_details}), 500
+import traceback
 
-if __name__ == '__main__':
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Log the full traceback
+    logging.error("Exception occurred", exc_info=True)
+    return jsonify({"error": "Internal server error"}), 500
+
     # Use the PORT environment variable if available, otherwise default to 5000
     port = int(os.environ.get('PORT', 5000))
     # Run the app, listening on all interfaces and with debug mode enabled
